@@ -200,11 +200,14 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
             log.debug("Sending {} fetch for partitions {} to broker {}", isolationLevel, request.fetchData().keySet(),
                     fetchTarget);
+            // 将发往每个node的FetchRequest都缓存到unsent队列上
             client.send(fetchTarget, request)
+            		// 添加listener，这也是处理FetchResponse的入口 
                     .addListener(new RequestFutureListener<ClientResponse>() {
                         @Override
                         public void onSuccess(ClientResponse resp) {
                             FetchResponse response = (FetchResponse) resp.responseBody();
+                            // 检查FetchRequest和FetchResponse的key是不是相等的，如果不相等则直接返回
                             if (!matchesRequestedPartitions(request, response)) {
                                 // obviously we expect the broker to always send us valid responses, so this check
                                 // is mainly for test cases where mock fetch responses must be manually crafted.
@@ -213,10 +216,10 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                         request.fetchData().keySet());
                                 return;
                             }
-
+                            // 获取FetchResponse里所有的key
                             Set<TopicPartition> partitions = new HashSet<>(response.responseData().keySet());
                             FetchResponseMetricAggregator metricAggregator = new FetchResponseMetricAggregator(sensors, partitions);
-
+                            // 获取分区，fetch offset和数据，封装成CompltetedFetch对象，并且添加到CompletedFetches队列里
                             for (Map.Entry<TopicPartition, FetchResponse.PartitionData> entry : response.responseData().entrySet()) {
                                 TopicPartition partition = entry.getKey();
                                 long fetchOffset = request.fetchData().get(partition).fetchOffset;
@@ -778,7 +781,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             Node node = cluster.leaderFor(partition); // 查找分区的leader副本所在的node
             if (node == null) {
                 metadata.requestUpdate(); // 找不到leader副本则准备更新metadata
-            } else if (!this.client.hasPendingRequests(node)) {
+            } else if (!this.client.hasPendingRequests(node)) { // 是否还有pending请求
                 // if there is a leader and no in-flight requests, issue a new fetch
                 LinkedHashMap<TopicPartition, FetchRequest.PartitionData> fetch = fetchable.get(node);
                 if (fetch == null) {
@@ -786,9 +789,9 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     fetchable.put(node, fetch);
                 }
 
-                long position = this.subscriptions.position(partition);
+                long position = this.subscriptions.position(partition);  // 获取分区的position
                 fetch.put(partition, new FetchRequest.PartitionData(position, FetchRequest.INVALID_LOG_START_OFFSET,
-                        this.fetchSize));
+                        this.fetchSize)); // 然后把(partition，PartitionData)放到fetch map集合里
                 log.debug("Added {} fetch request for partition {} at offset {} to node {}", isolationLevel,
                         partition, position, node);
             } else {
@@ -797,6 +800,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         }
 
         // create the fetches
+        // 按照node进行分类把发往同一节点的所有topicPartition和partitionData封装成fetchRequest
         Map<Node, FetchRequest.Builder> requests = new HashMap<>();
         for (Map.Entry<Node, LinkedHashMap<TopicPartition, FetchRequest.PartitionData>> entry : fetchable.entrySet()) {
             Node node = entry.getKey();

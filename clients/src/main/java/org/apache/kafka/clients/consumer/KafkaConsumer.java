@@ -1174,6 +1174,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         // after the long poll, we should check whether the group needs to rebalance
         // prior to returning data so that the group can stabilize faster
+        // 早长时间的poll之后，我们应该在返回数据之前检查是否这个组需要重新平衡，以至于这个组能够迅速的稳定
         if (coordinator.needRejoin())
             return Collections.emptyMap();
 
