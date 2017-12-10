@@ -768,15 +768,16 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     /**
      * Create fetch requests for all nodes for which we have assigned partitions
      * that have no existing requests in flight.
+     * 该方法负责创建FetchRequest请求，返回的值是Map
      */
     private Map<Node, FetchRequest.Builder> createFetchRequests() {
         // create the fetch info
-        Cluster cluster = metadata.fetch();
+        Cluster cluster = metadata.fetch(); // 获取Kafka集群的元数据
         Map<Node, LinkedHashMap<TopicPartition, FetchRequest.PartitionData>> fetchable = new LinkedHashMap<>();
         for (TopicPartition partition : fetchablePartitions()) {
-            Node node = cluster.leaderFor(partition);
+            Node node = cluster.leaderFor(partition); // 查找分区的leader副本所在的node
             if (node == null) {
-                metadata.requestUpdate();
+                metadata.requestUpdate(); // 找不到leader副本则准备更新metadata
             } else if (!this.client.hasPendingRequests(node)) {
                 // if there is a leader and no in-flight requests, issue a new fetch
                 LinkedHashMap<TopicPartition, FetchRequest.PartitionData> fetch = fetchable.get(node);

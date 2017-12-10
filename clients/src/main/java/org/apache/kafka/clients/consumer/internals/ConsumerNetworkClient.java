@@ -438,9 +438,10 @@ public class ConsumerNetworkClient implements Closeable {
     }
 
     public void maybeTriggerWakeup() {
+    	// 通过wakeupDisabledCount检测是否在执行不可中断的方法，通过wakeup检测是否有中断请求
         if (!wakeupDisabled.get() && wakeup.get()) {
             log.debug("Raising WakeupException in response to user wakeup");
-            wakeup.set(false);
+            wakeup.set(false); // 重置中断标志
             throw new WakeupException();
         }
     }

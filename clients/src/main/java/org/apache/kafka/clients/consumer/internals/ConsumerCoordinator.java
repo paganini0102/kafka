@@ -279,13 +279,15 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     public void poll(long now, long remainingMs) {
     	// 调用offset，提交请求的回调函数
         invokeCompletedOffsetCommitCallbacks();
-
+        // 判断订阅状态是否自动分配分区
         if (subscriptions.partitionsAutoAssigned()) {
+        	// coordinator不为空
             if (coordinatorUnknown()) {
+            	// 确保coordinator已经准备好接收请求了
                 ensureCoordinatorReady();
                 now = time.milliseconds();
             }
-
+            // 判断是否需要重新join
             if (needRejoin()) {
                 // due to a race condition between the initial metadata fetch and the initial rebalance,
                 // we need to ensure that the metadata is fresh before joining initially. This ensures

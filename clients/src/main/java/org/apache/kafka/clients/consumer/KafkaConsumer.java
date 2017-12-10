@@ -1091,18 +1091,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
-        acquireAndEnsureOpen();
+    	// 防止多线程操作
+        acquireAndEnsureOpen(); 
         try {
             if (timeout < 0)
                 throw new IllegalArgumentException("Timeout must not be negative");
-
+            
+            // 如果没有任何订阅，抛出异常
             if (this.subscriptions.hasNoSubscriptionOrUserAssignment())
                 throw new IllegalStateException("Consumer is not subscribed to any topics or assigned any partitions");
 
             // poll for new data until the timeout expires
-            long start = time.milliseconds();
+            long start = time.milliseconds(); // 一直poll新数据直到超时
             long remaining = timeout;
             do {
+            	// 获取数据，如果自动提交，则进行偏移量自动提交，如果设置offset重置，则进行offset重置
                 Map<TopicPartition, List<ConsumerRecord<K, V>>> records = pollOnce(remaining);
                 if (!records.isEmpty()) {
                     // before returning the fetched records, we can send off the next round of fetches
@@ -1111,7 +1114,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     //
                     // NOTE: since the consumed position has already been updated, we must not allow
                     // wakeups or any other errors to be triggered prior to returning the fetched records.
-                    if (fetcher.sendFetches() > 0 || client.hasPendingRequests())
+                    if (fetcher.sendFetches() > 0 || client.hasPendingRequests()) // 再返回结果之前，我们可以进行下一轮的fetch请求，避免阻塞等待
                         client.pollNoWakeup();
 
                     if (this.interceptors == null)
@@ -1138,19 +1141,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     private Map<TopicPartition, List<ConsumerRecord<K, V>>> pollOnce(long timeout) {
         client.maybeTriggerWakeup();
+        // 轮询coordinator事件，处理周期性的offset提交
         coordinator.poll(time.milliseconds(), timeout);
 
         // fetch positions if we have partitions we're subscribed to that we
         // don't know the offset for
+        // 判断上一次消费的位置是否为空，如果不为空，则更新fetch position
         if (!subscriptions.hasAllFetchPositions())
             updateFetchPositions(this.subscriptions.missingFetchPositions());
 
         // if data is available already, return it immediately
+        // 数据你准备好了就立即返回，也就是还有可能没有准备好
         Map<TopicPartition, List<ConsumerRecord<K, V>>> records = fetcher.fetchedRecords();
         if (!records.isEmpty())
             return records;
 
         // send any new fetches (won't resend pending fetches)
+        // 我们需要发送新fetch请求
         fetcher.sendFetches();
 
         long now = time.milliseconds();
@@ -1806,8 +1813,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     private void acquire() {
         long threadId = Thread.currentThread().getId();
+        // 记录当前线程Id，通过CAS操作完成
         if (threadId != currentThread.get() && !currentThread.compareAndSet(NO_CURRENT_THREAD, threadId))
+        	// 检测到多线程并发操作，则报错
             throw new ConcurrentModificationException("KafkaConsumer is not safe for multi-threaded access");
+        // 记录重入次数
         refcount.incrementAndGet();
     }
 
@@ -1816,7 +1826,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     private void release() {
         if (refcount.decrementAndGet() == 0)
-            currentThread.set(NO_CURRENT_THREAD);
+            currentThread.set(NO_CURRENT_THREAD); // 更新线程Id
     }
 
     private void throwIfNoAssignorsConfigured() {
