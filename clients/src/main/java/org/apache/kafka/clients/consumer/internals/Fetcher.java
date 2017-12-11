@@ -519,21 +519,28 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      *         the defaultResetPolicy is NONE
      */
     public Map<TopicPartition, List<ConsumerRecord<K, V>>> fetchedRecords() {
+    	// 创建一个以分区为key，ConsumerRecord列表为value的map，表示一个分区对应着它取到的结果
         Map<TopicPartition, List<ConsumerRecord<K, V>>> fetched = new HashMap<>();
+        // 初始化最多可以取maxPollRecords个record
         int recordsRemaining = maxPollRecords;
 
         try {
+        	 // 只要剩余的records数量大于0
             while (recordsRemaining > 0) {
-                if (nextInLineRecords == null || nextInLineRecords.isFetched) {
+                if (nextInLineRecords == null || nextInLineRecords.isFetched) { // nextInLineRecords已经被消费了
                     CompletedFetch completedFetch = completedFetches.peek();
                     if (completedFetch == null) break;
 
                     nextInLineRecords = parseCompletedFetch(completedFetch);
                     completedFetches.poll();
-                } else {
+                } else { // nextInLineRecords还没有被消费
+                	// nextInLineRecords还没有被消费
                     List<ConsumerRecord<K, V>> records = fetchRecords(nextInLineRecords, recordsRemaining);
+                    // 获取recordsRemaining个数据
                     TopicPartition partition = nextInLineRecords.partition;
+                    // 将record按照partition分类
                     if (!records.isEmpty()) {
+                    	// 获取对应分区的record
                         List<ConsumerRecord<K, V>> currentRecords = fetched.get(partition);
                         if (currentRecords == null) {
                             fetched.put(partition, records);
@@ -546,6 +553,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                             newRecords.addAll(records);
                             fetched.put(partition, newRecords);
                         }
+                        // 更新剩余的record数量
                         recordsRemaining -= records.size();
                     }
                 }
@@ -816,20 +824,26 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * The callback for fetch completion
      */
     private PartitionRecords parseCompletedFetch(CompletedFetch completedFetch) {
+    	// 获取这个完成的fetch所对应的分区
         TopicPartition tp = completedFetch.partition;
+        // 获取这个完成的fetch所对应的PartitionData
         FetchResponse.PartitionData partition = completedFetch.partitionData;
+        // 获取这个完成的fetch所对应offset
         long fetchOffset = completedFetch.fetchedOffset;
         PartitionRecords partitionRecords = null;
         Errors error = partition.error;
 
         try {
-            if (!subscriptions.isFetchable(tp)) {
+            if (!subscriptions.isFetchable(tp)) { // 判断该分区是否没有分配，或者分配了还不能fetch数据
                 // this can happen when a rebalance happened or a partition consumption paused
                 // while fetch is still in-flight
+            	// 一般发生在rebalance或者分区暂停的时候
                 log.debug("Ignoring fetched records for partition {} since it is no longer fetchable", tp);
-            } else if (error == Errors.NONE) {
+            } else if (error == Errors.NONE) { // 如果没有错误
                 // we are interested in this fetch only if the beginning offset matches the
                 // current consumed position
+            	// 只有当start offset与当前消耗的位置匹配时，我们才对该fetch感兴趣
+            	// 获取分区位置
                 Long position = subscriptions.position(tp);
                 if (position == null || position != fetchOffset) {
                     log.debug("Discarding stale fetch response for partition {} since its offset {} does not match " +
