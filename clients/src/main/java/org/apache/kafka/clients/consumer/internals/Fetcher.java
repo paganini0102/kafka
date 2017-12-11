@@ -534,7 +534,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     nextInLineRecords = parseCompletedFetch(completedFetch);
                     completedFetches.poll();
                 } else { // nextInLineRecords还没有被消费
-                	// nextInLineRecords还没有被消费
+                	// 从nextInLineRecords获取partition
                     List<ConsumerRecord<K, V>> records = fetchRecords(nextInLineRecords, recordsRemaining);
                     // 获取recordsRemaining个数据
                     TopicPartition partition = nextInLineRecords.partition;
@@ -566,18 +566,22 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     }
 
     private List<ConsumerRecord<K, V>> fetchRecords(PartitionRecords partitionRecords, int maxRecords) {
+    	// 检查返回的数据对应分区是否是已经分配
         if (!subscriptions.isAssigned(partitionRecords.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the consumer's poll call
             log.debug("Not returning fetched records for partition {} since it is no longer assigned",
                     partitionRecords.partition);
-        } else {
+        } else { // 如果该分区是已经分配了的
             // note that the consumed position should always be available as long as the partition is still assigned
+        	// 获取该分区的offset
             long position = subscriptions.position(partitionRecords.partition);
+            // 检查返回的数据对应分区是不是可以fetch数据,即是不是被暂停或者没有有效的offset
             if (!subscriptions.isFetchable(partitionRecords.partition)) {
                 // this can happen when a partition is paused before fetched records are returned to the consumer's poll call
                 log.debug("Not returning fetched records for assigned partition {} since it is no longer fetchable",
                         partitionRecords.partition);
-            } else if (partitionRecords.nextFetchOffset == position) {
+            } else if (partitionRecords.nextFetchOffset == position) { 
+            	// 根据返回的数据获取maxRecords个数量的record
                 List<ConsumerRecord<K, V>> partRecords = partitionRecords.fetchRecords(maxRecords);
 
                 long nextOffset = partitionRecords.nextFetchOffset;

@@ -110,29 +110,43 @@ public class SubscriptionState {
         else if (this.subscriptionType != type)
             throw new IllegalStateException(SUBSCRIPTION_EXCEPTION_MESSAGE);
     }
-
+    
+    /**
+     * 设置AUTO_TOPICS订阅类型，初始化监听器，检测topic是否发生变化，如果发生变化重置
+     * @param topics
+     * @param listener
+     */
     public void subscribe(Set<String> topics, ConsumerRebalanceListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("RebalanceListener cannot be null");
-
+        // 设置订阅类型，是自动分配还是用户分配
         setSubscriptionType(SubscriptionType.AUTO_TOPICS);
-
+        // 初始化消费者再平衡监听器
         this.listener = listener;
-
+        // 当订阅的topic集合发生变化时，重置订阅的主题集合，并且把所有的topic添加到groupSubscription
         changeSubscription(topics);
     }
 
+    /**
+     * 设置AUTO_PATTERN订阅类型，检测topic是否发生变化，如果发生变化重置
+     * @param topics
+     */
     public void subscribeFromPattern(Set<String> topics) {
         if (subscriptionType != SubscriptionType.AUTO_PATTERN)
             throw new IllegalArgumentException("Attempt to subscribe from pattern while subscription type set to " +
                     subscriptionType);
-
+        // 当订阅的topic集合发生变化时，重置订阅的主题集合，并且把所有的topic添加到groupSubscription
         changeSubscription(topics);
     }
 
+    /**
+     * 当订阅的topic集合发生变化时，重置订阅的主题集合，并且把所有的topic添加到groupSubscription
+     * @param topicsToSubscribe
+     */
     private void changeSubscription(Set<String> topicsToSubscribe) {
         if (!this.subscription.equals(topicsToSubscribe)) {
             this.subscription = topicsToSubscribe;
+            // 消费者自身订阅的topic添加到groupSubscription
             this.groupSubscription.addAll(topicsToSubscribe);
         }
     }
