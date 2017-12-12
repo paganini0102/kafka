@@ -170,6 +170,7 @@ public class SubscriptionState {
 
     /**
      * Reset the group's subscription to only contain topics subscribed by this consumer.
+     * 重置groupSubscription的订阅，只包含该用户订阅的主题
      */
     public void resetGroupSubscription() {
         this.groupSubscription.retainAll(subscription);
@@ -179,6 +180,7 @@ public class SubscriptionState {
      * Change the assignment to the specified partitions provided by the user,
      * note this is different from {@link #assignFromSubscribed(Collection)}
      * whose input partitions are provided from the subscribed topics.
+     * 根据用户提供的指定的partitions 改变assignment
      */
     public void assignFromUser(Set<TopicPartition> partitions) {
         setSubscriptionType(SubscriptionType.USER_ASSIGNED);
@@ -201,6 +203,7 @@ public class SubscriptionState {
     /**
      * Change the assignment to the specified partitions returned from the coordinator,
      * note this is different from {@link #assignFromUser(Set)} which directly set the assignment from user inputs
+     * 根据coordinator返回的partitions改变这assignment
      */
     public void assignFromSubscribed(Collection<TopicPartition> assignments) {
         if (!this.partitionsAutoAssigned())
@@ -243,6 +246,9 @@ public class SubscriptionState {
         return this.subscriptionType == SubscriptionType.NONE;
     }
 
+    /**
+     * 取消订阅
+     */
     public void unsubscribe() {
         this.subscription = Collections.emptySet();
         this.assignment.clear();
@@ -318,6 +324,10 @@ public class SubscriptionState {
         return this.assignment.partitionSet();
     }
 
+    /**
+     * 获取分配的分区的状态，然后看哪些分区是可以fetch数据，返回那些可以fetch数据的topic partition
+     * @return
+     */
     public List<TopicPartition> fetchablePartitions() {
         List<TopicPartition> fetchable = new ArrayList<>(assignment.size());
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -395,6 +405,7 @@ public class SubscriptionState {
         return hasAllFetchPositions(this.assignedPartitions());
     }
 
+    // 如果下一次消费位置没有，则返回那些TopicPartition集合
     public Set<TopicPartition> missingFetchPositions() {
         Set<TopicPartition> missing = new HashSet<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -445,6 +456,11 @@ public class SubscriptionState {
             listener.onAssignment(assignment);
     }
 
+    /**
+     * 根据指定的partitions集合，构建一个<partition,TopicPartitionState>映射
+     * @param assignments
+     * @return
+     */
     private static Map<TopicPartition, TopicPartitionState> partitionToStateMap(Collection<TopicPartition> assignments) {
         Map<TopicPartition, TopicPartitionState> map = new HashMap<>(assignments.size());
         for (TopicPartition tp : assignments)
