@@ -57,6 +57,12 @@ public class SubscriptionState {
     private static final String SUBSCRIPTION_EXCEPTION_MESSAGE =
             "Subscription to topics, partitions and pattern are mutually exclusive";
 
+    /**
+     * NONE: 没有状态
+	 * AUTO_TOPICS：按照指定的topic 名字进行订阅，自动分配分区
+	 * AUTO_PATTERN：按照正则表达式匹配topic名字进行订阅，自动分配分区
+	 * USER_ASSIGNED：用户自己指定订阅的topic以及分区号
+     */
     private enum SubscriptionType {
         NONE, AUTO_TOPICS, AUTO_PATTERN, USER_ASSIGNED
     }
@@ -447,11 +453,15 @@ public class SubscriptionState {
     }
 
     private static class TopicPartitionState {
+    	/** 下一次要从kafka服务器端获取消息的offset */
         private Long position; // last consumed position
         private Long highWatermark; // the high watermark from last fetch
         private Long lastStableOffset;
+        /** 最近一次提交的offset */
         private OffsetAndMetadata committed;  // last committed position
+        /** 当前TopicPartition是否暂停消费 */
         private boolean paused;  // whether this partition has been paused by the user
+        /** 重置position策略，该字段是否为空也表示是否需要重置position */
         private OffsetResetStrategy resetStrategy;  // the strategy to use if the offset needs resetting
 
         public TopicPartitionState() {
