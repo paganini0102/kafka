@@ -296,7 +296,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                     client.ensureFreshMetadata();
 
                 ensureActiveGroup();
-                now = time.milliseconds();
+                now = time.milliseconds();	
             }
         } else {
             // For manually assigned partitions, if there are no ready nodes, await metadata.
