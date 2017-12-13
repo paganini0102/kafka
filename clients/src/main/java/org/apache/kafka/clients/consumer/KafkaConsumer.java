@@ -883,11 +883,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Collection<String> topics, ConsumerRebalanceListener listener) {
-        acquireAndEnsureOpen();
+        acquireAndEnsureOpen(); // 取得一把锁
         try {
-            if (topics == null) {
+            if (topics == null) { // 主题列表为null，抛出异常
                 throw new IllegalArgumentException("Topic collection to subscribe to cannot be null");
-            } else if (topics.isEmpty()) {
+            } else if (topics.isEmpty()) { // 主题列表为空，取消订阅
                 // treat subscribing to empty topic list as the same as unsubscribing
                 this.unsubscribe();
             } else {
@@ -900,9 +900,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 log.debug("Subscribed to topic(s): {}", Utils.join(topics, ", "));
                 this.subscriptions.subscribe(new HashSet<>(topics), listener);
+                // 用新提供的topic集合替换当前的topic集合，如果启用了主题过期，主题的过期时间将在下一次更新中重新设置。
                 metadata.setTopics(subscriptions.groupSubscription());
             }
         } finally {
+        	// 释放锁
             release();
         }
     }
@@ -1031,15 +1033,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *                               (without a subsequent call to {@link #unsubscribe()})
      */
     @Override
-    public void assign(Collection<TopicPartition> partitions) {
+    public void assign(Collection<TopicPartition> partitions) { // assign 手动分配分区
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
                 throw new IllegalArgumentException("Topic partition collection to assign to cannot be null");
-            } else if (partitions.isEmpty()) {
+            } else if (partitions.isEmpty()) { // partition为空取消订阅
                 this.unsubscribe();
             } else {
                 Set<String> topics = new HashSet<>();
+                // 遍历TopicPartition，把topic添加到一个集合里
                 for (TopicPartition tp : partitions) {
                     String topic = (tp != null) ? tp.topic() : null;
                     if (topic == null || topic.trim().isEmpty())
@@ -1049,11 +1052,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 // make sure the offsets of topic partitions the consumer is unsubscribing from
                 // are committed since there will be no following rebalance
+                // 进行一次自动提交
                 this.coordinator.maybeAutoCommitOffsetsNow();
 
                 log.debug("Subscribed to partition(s): {}", Utils.join(partitions, ", "));
+                // 根据用户提供的指定的partitions 改变assignment
                 this.subscriptions.assignFromUser(new HashSet<>(partitions));
-                metadata.setTopics(topics);
+                // 更新metatdata topic
+                metadata.setTopics(topics); 
             }
         } finally {
             release();
@@ -1178,7 +1184,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         // 早长时间的poll之后，我们应该在返回数据之前检查是否这个组需要重新平衡，以至于这个组能够迅速的稳定
         if (coordinator.needRejoin())
             return Collections.emptyMap();
-
+        // 获取返回的消息
         return fetcher.fetchedRecords();
     }
 
@@ -1353,7 +1359,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *
      * @throws IllegalArgumentException if {@code partitions} is {@code null} or the provided TopicPartition is not assigned to this consumer
      */
-    public void seekToBeginning(Collection<TopicPartition> partitions) {
+    public void seekToBeginning(Collection<TopicPartition> partitions) { // 为指定的分区查找第一个offset
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1379,7 +1385,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *
      * @throws IllegalArgumentException if {@code partitions} is {@code null} or the provided TopicPartition is not assigned to this consumer
      */
-    public void seekToEnd(Collection<TopicPartition> partitions) {
+    public void seekToEnd(Collection<TopicPartition> partitions) { // 为指定的分区查找最后的offset
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1416,7 +1422,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *             configured groupId. See the exception for more details
      * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
      */
-    public long position(TopicPartition partition) {
+    public long position(TopicPartition partition) { // 获取下一个record的offset
         acquireAndEnsureOpen();
         try {
             if (!this.subscriptions.isAssigned(partition))
