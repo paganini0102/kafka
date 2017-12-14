@@ -394,6 +394,7 @@ public class SubscriptionState {
         return assignedState(partition).resetStrategy;
     }
 
+    // 判断下一次消费的位置是否为空
     public boolean hasAllFetchPositions(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions)
             if (!hasValidPosition(partition))
@@ -423,6 +424,7 @@ public class SubscriptionState {
         return isAssigned(tp) && assignedState(tp).paused;
     }
 
+    // 判断该分区是否分配了，而且是否可以fetch数据了
     public boolean isFetchable(TopicPartition tp) {
         return isAssigned(tp) && assignedState(tp).isFetchable();
     }
@@ -498,6 +500,7 @@ public class SubscriptionState {
             return resetStrategy != null;
         }
 
+        // 判断下一次消费的消息的offset是否为空
         public boolean hasValidPosition() {
             return position != null;
         }
