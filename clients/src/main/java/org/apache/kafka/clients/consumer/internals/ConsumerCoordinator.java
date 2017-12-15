@@ -65,6 +65,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class ConsumerCoordinator extends AbstractCoordinator {
     private final Logger log;
+    /**
+     * PartitionAssignor列表。在消费者发送的JoinGroupRequest请求中包含了消费者自身支持的PartitionAssignor信息，
+     * GroupCoordinator从所有消费者都支持的分配策略中选择一个，通知Leader使用此分配策略进行分区分配。此字段的值通
+     * 过partition.assignment.strategy参数配置，可以配置多个。
+     */
     private final List<PartitionAssignor> assignors;
     private final Metadata metadata;
     private final ConsumerCoordinatorMetrics sensors;
@@ -82,7 +87,10 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
     private boolean isLeader = false;
     private Set<String> joinedSubscription;
+    /** 用来存储Metadata的快照信息，主要用来检测Topic是否发生了分区数量的变化。*/
     private MetadataSnapshot metadataSnapshot;
+    /**
+     * 也是用来存储Metadata的快照信息，不过是用来检测Partition分配的过程中有没有发生分区数量变化。*/
     private MetadataSnapshot assignmentSnapshot;
     private long nextAutoCommitDeadline;
 
@@ -178,7 +186,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 // if we encounter any unauthorized topics, raise an exception to the user
                 if (!cluster.unauthorizedTopics().isEmpty())
                     throw new TopicAuthorizationException(new HashSet<>(cluster.unauthorizedTopics()));
-
+                // AUTO_PATTERN模式的处理
                 if (subscriptions.hasPatternSubscription())
                     updatePatternSubscription(cluster);
 
