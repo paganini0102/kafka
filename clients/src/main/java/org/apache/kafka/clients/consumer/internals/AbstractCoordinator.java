@@ -262,6 +262,7 @@ public abstract class AbstractCoordinator implements Closeable {
 
     /**
      * Check whether the group should be rejoined (e.g. if metadata changes)
+     * 判断是否需要重新join
      * @return true if it should, false otherwise
      */
     protected synchronized boolean needRejoin() {
@@ -311,8 +312,11 @@ public abstract class AbstractCoordinator implements Closeable {
     public void ensureActiveGroup() {
         // always ensure that the coordinator is ready because we may have been disconnected
         // when sending heartbeats and does not necessarily require us to rejoin the group.
+    	// 确保coordinator已经准备好接收请求
         ensureCoordinatorReady();
+        // 开启心跳线程
         startHeartbeatThreadIfNeeded();
+        // 加入组
         joinGroupIfNeeded();
     }
 

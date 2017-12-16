@@ -304,9 +304,11 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 // due to a race condition between the initial metadata fetch and the initial rebalance,
                 // we need to ensure that the metadata is fresh before joining initially. This ensures
                 // that we have matched the pattern against the cluster's topics at least once before joining.
+            	// 由于初始元数据获取和初始重新平衡之间的竞争条件，我们需要确保元数据在开始加入之前是新鲜的。
+            	// 确保了我们在join之前至少有一次与集群的主题的模式匹配
                 if (subscriptions.hasPatternSubscription())
-                    client.ensureFreshMetadata();
-
+                    client.ensureFreshMetadata(); // 刷新元数据
+                // 确保协调器可用，心跳线程开启和组可用
                 ensureActiveGroup();
                 now = time.milliseconds();	
             }
@@ -443,17 +445,20 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
     @Override
     public boolean needRejoin() {
+    	// 如果不是自动分配partition，不如用户自己指定，则不需要rejoin
         if (!subscriptions.partitionsAutoAssigned())
             return false;
 
         // we need to rejoin if we performed the assignment and metadata has changed
+        // 如果我们执行了任务并且元数据改变了，我们需要重新加入
         if (assignmentSnapshot != null && !assignmentSnapshot.equals(metadataSnapshot))
             return true;
 
         // we need to join if our subscription has changed since the last join
+        // 如果我们的订阅自上一次join之后改变了，那么我们需要加入
         if (joinedSubscription != null && !joinedSubscription.equals(subscriptions.subscription()))
             return true;
-
+        // 默认需要重新join
         return super.needRejoin();
     }
 
