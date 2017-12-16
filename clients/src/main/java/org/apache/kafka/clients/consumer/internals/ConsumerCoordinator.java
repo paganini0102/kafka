@@ -179,6 +179,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         metadata.setTopics(subscriptions.groupSubscription());
     }
 
+    // 给Metadata添加监听器
     private void addMetadataListener() {
         this.metadata.addListener(new Metadata.Listener() {
             @Override
@@ -191,10 +192,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                     updatePatternSubscription(cluster);
 
                 // check if there are any changes to the metadata which should trigger a rebalance
+                // 检测是否为AUTO_PATTERN或AUTO_TOPICS模式
                 if (subscriptions.partitionsAutoAssigned()) {
+                	// 创建快照
                     MetadataSnapshot snapshot = new MetadataSnapshot(subscriptions, cluster);
-                    if (!snapshot.equals(metadataSnapshot))
-                        metadataSnapshot = snapshot;
+                    if (!snapshot.equals(metadataSnapshot)) // 比较快照
+                        metadataSnapshot = snapshot; // 记录快照
                 }
 
                 if (!Collections.disjoint(metadata.topics(), unavailableTopics))
@@ -203,6 +206,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         });
     }
 
+    // 查找指定的分区分配策略
     private PartitionAssignor lookupAssignor(String name) {
         for (PartitionAssignor assignor : this.assignors) {
             if (assignor.name().equals(name))
