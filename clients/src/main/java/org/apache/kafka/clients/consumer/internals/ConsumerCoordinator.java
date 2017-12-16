@@ -221,19 +221,24 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                                   String assignmentStrategy,
                                   ByteBuffer assignmentBuffer) {
         // only the leader is responsible for monitoring for metadata changes (i.e. partition changes)
+    	// 只有leader才会监控元数据的改变
         if (!isLeader)
             assignmentSnapshot = null;
 
+        // 获取partition分配策略
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
 
+        // 获取分配结果
         Assignment assignment = ConsumerProtocol.deserializeAssignment(assignmentBuffer);
 
         // set the flag to refresh last committed offsets
+        // 设置标记刷新最近一次提交的offset
         subscriptions.needRefreshCommits();
 
         // update partition assignment
+        // 更新分区的分配
         subscriptions.assignFromSubscribed(assignment.partitions());
 
         // check if the assignment contains some topics that were not in the original
@@ -263,6 +268,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         client.ensureFreshMetadata();
 
         // give the assignor a chance to update internal state based on the received assignment
+        // 给一个分区分配策略一个机会更新分配结果
         assignor.onAssignment(assignment);
 
         // reschedule the auto commit starting from now
