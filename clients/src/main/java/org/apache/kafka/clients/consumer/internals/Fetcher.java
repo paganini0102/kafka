@@ -268,15 +268,18 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         // reset the fetch position to the committed position
         for (TopicPartition tp : partitions) {
             if (!subscriptions.isAssigned(tp) || subscriptions.hasValidPosition(tp))
-                continue;
+                continue; // 检测position是否为空，如果飞控则表示正常，不需要重置操作
 
             if (subscriptions.isOffsetResetNeeded(tp)) {
-                needsOffsetReset.add(tp);
+                needsOffsetReset.add(tp); // 按照指定的策略对position进行更新
             } else if (subscriptions.committed(tp) == null) {
                 // there's no committed position, so we need to reset with the default strategy
+            	// 对应的TopicPartitionState.commotted字段为空
+            	// 则按照default strategy策略更新position的值
                 subscriptions.needOffsetReset(tp);
                 needsOffsetReset.add(tp);
             } else {
+            	// 如果对应的TopicPartitionState.committed字段不为空，则将position字段更新为committed字段值
                 long committed = subscriptions.committed(tp).offset();
                 log.debug("Resetting offset for partition {} to the committed offset {}", tp, committed);
                 subscriptions.seek(tp, committed);
