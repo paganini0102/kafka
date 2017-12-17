@@ -215,6 +215,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         return null;
     }
 
+    // JoinGroupRequest请求完成之后，需要执行的动作
     @Override
     protected void onJoinComplete(int generation,
                                   String memberId,

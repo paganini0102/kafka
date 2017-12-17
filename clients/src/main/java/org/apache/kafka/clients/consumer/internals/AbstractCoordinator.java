@@ -350,6 +350,7 @@ public abstract class AbstractCoordinator implements Closeable {
     }
 
     // visible for testing. Joins the group without starting the heartbeat thread.
+    // 进行Join Group操作会初始化JoinGroupRequest，并且发送请求到服务器端
     void joinGroupIfNeeded() {
         while (needRejoin() || rejoinIncomplete()) {
             ensureCoordinatorReady();
@@ -392,28 +393,35 @@ public abstract class AbstractCoordinator implements Closeable {
         this.joinFuture = null;
     }
 
+    // 初始化JoinGroupRequest请求，然后发送该请求
     private synchronized RequestFuture<ByteBuffer> initiateJoinGroup() {
         // we store the join future in case we are woken up by the user after beginning the
         // rebalance in the call to poll below. This ensures that we do not mistakenly attempt
         // to rejoin before the pending rebalance has completed.
+    	// 我们存储join future，以防止我们在开始rebalance之后，就被用户唤醒
+        // 这确保了我们不会错误地尝试在尚未完成的再平衡完成之前重新加入。
         if (joinFuture == null) {
             // fence off the heartbeat thread explicitly so that it cannot interfere with the join group.
             // Note that this must come after the call to onJoinPrepare since we must be able to continue
             // sending heartbeats if that callback takes some time.
+        	// 对心跳线程进行明确的隔离，这样它就不会干扰到连接组。
+            // 注意：这个后必须调用onJoinPrepare因为我们必须能够继续发送心跳，如果回调需要一些时间。
             disableHeartbeatThread();
-
+            // 更改状态
             state = MemberState.REBALANCING;
+            // 发送JoinGroupRequest，返回RequestFuture对象
             joinFuture = sendJoinGroupRequest();
             joinFuture.addListener(new RequestFutureListener<ByteBuffer>() {
                 @Override
                 public void onSuccess(ByteBuffer value) {
                     // handle join completion in the callback so that the callback will be invoked
                     // even if the consumer is woken up before finishing the rebalance
+                	// 如果成功，则更新状态为消费者客户端已成功加入
                     synchronized (AbstractCoordinator.this) {
                         log.info("Successfully joined group with generation {}", generation.generationId);
                         state = MemberState.STABLE;
                         rejoinNeeded = false;
-
+                        // 然后开始心跳检测
                         if (heartbeatThread != null)
                             heartbeatThread.enable();
                     }
@@ -438,11 +446,13 @@ public abstract class AbstractCoordinator implements Closeable {
      * elected leader by the coordinator.
      * @return A request future which wraps the assignment returned from the group leader
      */
-    private RequestFuture<ByteBuffer> sendJoinGroupRequest() {
+    private RequestFuture<ByteBuffer> sendJoinGroupRequest() { // 发送JoinGroupRequest
+    	// 检测coordinator是否可用
         if (coordinatorUnknown())
             return RequestFuture.coordinatorNotAvailable();
 
         // send a join group request to the coordinator
+        // 创建JoinGroupRequest
         log.info("(Re-)joining group");
         JoinGroupRequest.Builder requestBuilder = new JoinGroupRequest.Builder(
                 groupId,
@@ -452,6 +462,7 @@ public abstract class AbstractCoordinator implements Closeable {
                 metadata()).setRebalanceTimeout(this.rebalanceTimeoutMs);
 
         log.debug("Sending JoinGroup ({}) to coordinator {}", requestBuilder, this.coordinator);
+        // 将这个请求放入unsent集合，等待被发送，并返回一个RequestFuture对象
         return client.send(coordinator, requestBuilder)
                 .compose(new JoinGroupResponseHandler());
     }
