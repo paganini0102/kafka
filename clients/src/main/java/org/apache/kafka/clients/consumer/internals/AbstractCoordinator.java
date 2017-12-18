@@ -759,6 +759,8 @@ public abstract class AbstractCoordinator implements Closeable {
     }
 
     // visible for testing
+    // 构造HeartbeatRequest对象，通过ConsumerClientNetwork添加到unsent队列，
+    // 等待发送，结果HeartbeatResponseHandler处理后返回一个RequestFuture
     synchronized RequestFuture<Void> sendHeartbeatRequest() {
         log.debug("Sending Heartbeat request to coordinator {}", coordinator);
         HeartbeatRequest.Builder requestBuilder =
@@ -934,42 +936,52 @@ public abstract class AbstractCoordinator implements Closeable {
                     synchronized (AbstractCoordinator.this) {
                         if (closed)
                             return;
-
+                        // 是否enable HeartbeatThread
                         if (!enabled) {
                             AbstractCoordinator.this.wait();
                             continue;
                         }
-
+                        // 如果消费者状态如果不是STABLE(消费者已经加入消费者组，并且开始发送心跳)
                         if (state != MemberState.STABLE) {
                             // the group is not stable (perhaps because we left the group or because the coordinator
                             // kicked us out), so disable heartbeats and wait for the main thread to rejoin.
+                        	// 可能是消费者离开消费者组或者coordinator把我们踢了，所以需要disable heartbeats，等待主线程重新加入
                             disable();
                             continue;
                         }
 
                         client.pollNoWakeup();
                         long now = time.milliseconds();
-
+                        // 检测GroupCoordinator是否已连接
                         if (coordinatorUnknown()) {
+                        	 // 如果没有连接，则查找GroupCoordinator，并返回一个请求结果
                             if (findCoordinatorFuture != null || lookupCoordinator().failed())
                                 // the immediate future check ensures that we backoff properly in the case that no
                                 // brokers are available to connect to.
                                 AbstractCoordinator.this.wait(retryBackoffMs);
-                        } else if (heartbeat.sessionTimeoutExpired(now)) {
+                        } else if (heartbeat.sessionTimeoutExpired(now)) { // 检测HeartbeatRespose是否超时
                             // the session timeout has expired without seeing a successful heartbeat, so we should
                             // probably make sure the coordinator is still healthy.
+                        	// 如果超时，则认为GroupCoordinator宕机，调用coordinatorDead方法清空unsent集合中的请求，
+                        	// 将coordinator设置为null，表示将重新选举GroupCoordinator
                             coordinatorDead();
-                        } else if (heartbeat.pollTimeoutExpired(now)) {
+                        } else if (heartbeat.pollTimeoutExpired(now)) { 
                             // the poll timeout has expired, which means that the foreground thread has stalled
                             // in between calls to poll(), so we explicitly leave the group.
                             maybeLeaveGroup();
-                        } else if (!heartbeat.shouldHeartbeat(now)) {
+                        } else if (!heartbeat.shouldHeartbeat(now)) { // 没有到心跳请求的发送时间，等待
                             // poll again after waiting for the retry backoff in case the heartbeat failed or the
                             // coordinator disconnected
                             AbstractCoordinator.this.wait(retryBackoffMs);
                         } else {
+                        	// 更新lastHeartbeatSend的时间，并且初始化heartbeatFailed
                             heartbeat.sentHeartbeat(now);
-
+                            // 构造HeartbeatRequest对象，通过ConsumerClientNetwork添加到unsent队列，
+                            // 等待发送，结果HeartbeatResponseHandler处理后返回一个RequestFuture
+                            // 添加RequestFutureListener监听器，如果成功更新lastHeartbeatReceive时间
+                            // 如果失败，则需要看情况：
+                            // # 如果是正处于rebalance过程还是更新lastHeartbeatReceive时间
+                            // # 标记heartbeat请求失败
                             sendHeartbeatRequest().addListener(new RequestFutureListener<Void>() {
                                 @Override
                                 public void onSuccess(Void value) {

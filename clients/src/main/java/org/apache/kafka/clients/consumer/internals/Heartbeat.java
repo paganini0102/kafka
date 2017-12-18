@@ -20,15 +20,20 @@ package org.apache.kafka.clients.consumer.internals;
  * A helper class for managing the heartbeat to the coordinator
  */
 public final class Heartbeat {
+	/** session到期时间 */
     private final long sessionTimeout;
+    /** 发送heartbeat的间隔 */
     private final long heartbeatInterval;
+    /** 最大的poll间隔 */
     private final long maxPollInterval;
+    /** 重试时间 */
     private final long retryBackoffMs;
-
+    /** 上一次发送heartbeat时间 */
     private volatile long lastHeartbeatSend; // volatile since it is read by metrics
     private long lastHeartbeatReceive;
     private long lastSessionReset;
     private long lastPoll;
+    /** heartbeat是否成功 */
     private boolean heartbeatFailed;
 
     public Heartbeat(long sessionTimeout,
@@ -44,23 +49,43 @@ public final class Heartbeat {
         this.retryBackoffMs = retryBackoffMs;
     }
 
+    /**
+     * 更新lastPoll时间
+     * @param now
+     */
     public void poll(long now) {
         this.lastPoll = now;
     }
 
+    /**
+     * 更新上一次心跳发送时间
+     * @param now
+     */
     public void sentHeartbeat(long now) {
         this.lastHeartbeatSend = now;
         this.heartbeatFailed = false;
     }
 
+    /**
+     * 更新心跳状态为失败
+     */
     public void failHeartbeat() {
         this.heartbeatFailed = true;
     }
 
+    /**
+     * 更新上次接收心跳时间
+     * @param now
+     */
     public void receiveHeartbeat(long now) {
         this.lastHeartbeatReceive = now;
     }
 
+    /**
+     * 更新上一次心跳发送时间
+     * @param now
+     * @return
+     */
     public boolean shouldHeartbeat(long now) {
         return timeToNextHeartbeat(now) == 0;
     }
@@ -83,6 +108,11 @@ public final class Heartbeat {
             return delayToNextHeartbeat - timeSinceLastHeartbeat;
     }
 
+    /**
+     * 判断session是否过期
+     * @param now
+     * @return
+     */
     public boolean sessionTimeoutExpired(long now) {
         return now - Math.max(lastSessionReset, lastHeartbeatReceive) > sessionTimeout;
     }
@@ -97,6 +127,11 @@ public final class Heartbeat {
         this.heartbeatFailed = false;
     }
 
+    /**
+     * 判断poll是否过期
+     * @param now
+     * @return
+     */
     public boolean pollTimeoutExpired(long now) {
         return now - lastPoll > maxPollInterval;
     }
