@@ -255,7 +255,7 @@ public abstract class AbstractCoordinator implements Closeable {
     }
 
     /**
-     * 查找GroupCoordinator,并返回一个请求结果
+     * 查找GroupCoordinator，并返回一个请求结果
      * @return
      */
     protected synchronized RequestFuture<Void> lookupCoordinator() {

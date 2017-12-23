@@ -578,7 +578,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             // note that the consumed position should always be available as long as the partition is still assigned
         	// 获取该分区的offset
             long position = subscriptions.position(partitionRecords.partition);
-            // 检查返回的数据对应分区是不是可以fetch数据,即是不是被暂停或者没有有效的offset
+            // 检查返回的数据对应分区是不是可以fetch数据，即是不是被暂停或者没有有效的offset
             if (!subscriptions.isFetchable(partitionRecords.partition)) {
                 // this can happen when a partition is paused before fetched records are returned to the consumer's poll call
                 log.debug("Not returning fetched records for assigned partition {} since it is no longer fetchable",

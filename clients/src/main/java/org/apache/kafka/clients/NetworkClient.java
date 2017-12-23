@@ -212,21 +212,24 @@ public class NetworkClient implements KafkaClient {
 
     /**
      * Begin connecting to the given node, return true if we are already connected and ready to send to that node.
-     *
+     * 检测是否可以发送请求
      * @param node The node to check
      * @param now The current timestamp
      * @return True if we are ready to send to the given node
      */
     @Override
     public boolean ready(Node node, long now) {
+    	// 检测节点是否为空
         if (node.isEmpty())
             throw new IllegalArgumentException("Cannot connect to empty node " + node);
-
+        // 判断是否已经准备好发送请求
         if (isReady(node, now))
             return true;
 
+        // 检测该节点现在是否能够连接
         if (connectionStates.canConnect(node.idString(), now))
             // if we are interested in sending to a node and we don't have a connection to it, initiate one
+        	// 初始化一个连接
             initiateConnect(node, now);
 
         return false;
@@ -336,6 +339,7 @@ public class NetworkClient implements KafkaClient {
     public boolean isReady(Node node, long now) {
         // if we need to update our metadata now declare all requests unready to make metadata requests first
         // priority
+    	// 是否我们现在需要更新元数据以及该node是否已经可以发送请求
         return !metadataUpdater.isUpdateDue(now) && canSendRequest(node.idString());
     }
 
