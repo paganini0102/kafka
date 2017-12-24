@@ -188,11 +188,14 @@ public class KafkaChannel {
 
     public NetworkReceive read() throws IOException {
         NetworkReceive result = null;
-
+        // 初始化NetworkReceive
         if (receive == null) {
             receive = new NetworkReceive(maxReceiveSize, id, memoryPool);
         }
 
+        // 从TransportLayer中读取数据到NetworkReceive对象中，如果没有读完一个完整的NetworkReceive
+        // 则下次触发OP_READ事件时将继续填充此NetworkReceive对象；如果读完了则将此receive置为空，下次
+        // 触发读操作的时候，创建新的NetworkReceive对象
         receive(receive);
         if (receive.complete()) {
             receive.payload().rewind();
@@ -236,7 +239,10 @@ public class KafkaChannel {
     }
 
     private boolean send(Send send) throws IOException {
+    	// 如果send在一次write调用时没有发送完，SelectionKey的OP_WRITE事件还没有取消，还会继续监听此channel的op_write事件
+        // 直到整个send请求发送完毕才取消
         send.writeTo(transportLayer);
+        // 判断发送是否完成是通过ByteBuffer中是否还有剩余的字节来判断的
         if (send.completed())
             transportLayer.removeInterestOps(SelectionKey.OP_WRITE);
 
