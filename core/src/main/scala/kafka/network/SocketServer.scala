@@ -51,13 +51,17 @@ import scala.util.control.ControlThrowable
  *   M Handler threads that handle requests and produce responses back to the processor threads for writing.
  */
 class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time, val credentialProvider: CredentialProvider) extends Logging with KafkaMetricsGroup {
-
+  /** Endpoint集合。一般的服务器都有多块网卡，可以配置多个IP，Kafka可以同时监听多个端口。Endpoint类中封装了需要监听的host、port及使用的网络协议。每个Endpoint都会创建一个对应的Acceptor对象 */
   private val endpoints = config.listeners.map(l => l.listenerName -> l).toMap
+  /** Processor线程的个数 */
   private val numProcessorThreads = config.numNetworkThreads
+  /** 在RequestChannel的requestQueue中缓存的最大请求个数 */
   private val maxQueuedRequests = config.queuedMaxRequests
+  /** Processor线程的总个数，即numProcessorThreads*endpoints.size */
   private val totalProcessorThreads = numProcessorThreads * endpoints.size
-
+  /** 每个IP上能创建的最大连接数 */
   private val maxConnectionsPerIp = config.maxConnectionsPerIp
+  /** Map<String, Int>类型，具体指定某IP上最大的连接数，这里指定的最大连接数会覆盖上面maxConnectionsPerIp字段的值 */
   private val maxConnectionsPerIpOverrides = config.maxConnectionsPerIpOverrides
 
   private val logContext = new LogContext(s"[SocketServer brokerId=${config.brokerId}] ")
@@ -68,18 +72,28 @@ class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time
   private val memoryPoolDepletedTimeMetricName = metrics.metricName("MemoryPoolDepletedTimeTotal", "socket-server-metrics")
   memoryPoolSensor.add(new Meter(TimeUnit.MILLISECONDS, memoryPoolDepletedPercentMetricName, memoryPoolDepletedTimeMetricName))
   private val memoryPool = if (config.queuedMaxBytes > 0) new SimpleMemoryPool(config.queuedMaxBytes, config.socketRequestMaxBytes, false, memoryPoolSensor) else MemoryPool.NONE
+  /** 
+   *  Processor线程与Handler线程之间交换数据的队列
+   *  创建RequestChannel，其中有totalProcessorThreads个responseQueue队列 
+   */
   val requestChannel = new RequestChannel(totalProcessorThreads, maxQueuedRequests)
+  /** 创建保存Processor的数组，长度为totalProcessorThreads */
   private val processors = new Array[Processor](totalProcessorThreads)
-
+  /** Acceptor对象集合，每个Endpoint对应一个Acceptor对象 */
   private[network] val acceptors = mutable.Map[EndPoint, Acceptor]()
+  /**
+   * ConnectionQuotas类型的对象。在ConnectionQuotas中，提供了控制每个IP上的最大连接数的功能。底层通过一个Map对象，记录每个IP地址上建立的
+   * 连接数，创建新Connect时与maxConnectionsPerIpOverrides指定的最大值（或maxConnectionsPerIp）进行比较，若超出限制，则报错。因为有多个
+   * Acceptor线程并发访问底层的Map对象，则需要synchronized进行同步
+   */
   private var connectionQuotas: ConnectionQuotas = _
   private var stoppedProcessingRequests = false
 
   /**
    * Start the socket server
    */
-  def startup() {
-    this.synchronized {
+  def startup() {  
+    this.synchronized { 
 
       connectionQuotas = new ConnectionQuotas(maxConnectionsPerIp, maxConnectionsPerIpOverrides)
 
