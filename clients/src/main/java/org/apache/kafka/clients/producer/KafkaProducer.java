@@ -231,28 +231,42 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
     private final Logger log;
+    /** cliendId的生产器，如果没有明确指定client的Id，则使用字段生成一个ID */
     private static final AtomicInteger PRODUCER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
     private static final String JMX_PREFIX = "kafka.producer";
     public static final String NETWORK_THREAD_PREFIX = "kafka-producer-network-thread";
-
+    /** 此生产者的唯一标识 */
     private final String clientId;
     // Visible for testing
     final Metrics metrics;
+    /** 分区选择器，根据一定的策略，将消息路由到合适的分区 */
     private final Partitioner partitioner;
+    /** 消息的最大长度，这个长度包含了消息头、序列化后的key和序列化后的value的长度 */
     private final int maxRequestSize;
     private final long totalMemorySize;
+    /** 整个Kafka集群的元数据 */
     private final Metadata metadata;
+    /** 用户收集并缓存消息，等待Sender线程发送 */
     private final RecordAccumulator accumulator;
+    /** 发送消息的Sender任务，实现了Runnable接口，在ioThread线程中执行 */
     private final Sender sender;
+    /** 执行Sender任务发送消息的线程，称为“Sender线程” */
     private final Thread ioThread;
+    /** 压缩算法，可选项有none、gzip、snappy、lz4。这是针对RecordAccumulator中多条消息进行的压缩，所以消息越多，压缩效果越好 */
     private final CompressionType compressionType;
     private final Sensor errors;
     private final Time time;
+    /** key的序列化器 */
     private final ExtendedSerializer<K> keySerializer;
+    /** value的序列化器 */
     private final ExtendedSerializer<V> valueSerializer;
+    /** 配置对象，使用反射初始化KafkaProducer配置的相对对象 */
     private final ProducerConfig producerConfig;
+    /** 等待更新Kafka集群元数据的最大时长 */
     private final long maxBlockTimeMs;
+    /** 消息的超时时间，也就是从消息发送到收到ACK响应的最长时长 */
     private final int requestTimeoutMs;
+    /** ProducerInterceptor集合，ProducerInterceptor可以在消息发送之前对其进行拦截或修改；也可以先于用户的Callback，对ACK响应进行预处理 */
     private final ProducerInterceptors<K, V> interceptors;
     private final ApiVersions apiVersions;
     private final TransactionManager transactionManager;
@@ -344,8 +358,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             reporters.add(new JmxReporter(JMX_PREFIX));
             this.metrics = new Metrics(metricConfig, reporters, time);
             ProducerMetrics metricsRegistry = new ProducerMetrics(this.metrics);
+            // 通过反射机制实例化配置的Partitionier类
             this.partitioner = config.getConfiguredInstance(ProducerConfig.PARTITIONER_CLASS_CONFIG, Partitioner.class);
             long retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG);
+            // 通过反射机制实例化配置的KeySerializer类
             if (keySerializer == null) {
                 this.keySerializer = ensureExtended(config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                                                                                          Serializer.class));
@@ -354,6 +370,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 config.ignore(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
                 this.keySerializer = ensureExtended(keySerializer);
             }
+            // 通过反射机制实例化配置的ValueSerializer类
             if (valueSerializer == null) {
                 this.valueSerializer = ensureExtended(config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
                                                                                            Serializer.class));
@@ -381,6 +398,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             short acks = configureAcks(config, transactionManager != null, log);
 
             this.apiVersions = new ApiVersions();
+            // 创建RecordAccumulator
             this.accumulator = new RecordAccumulator(logContext,
                     config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.totalMemorySize,
@@ -392,6 +410,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     apiVersions,
                     transactionManager);
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
+            // 创建并更新Kafka集群的元数据
             if (metadata != null) {
                 this.metadata = metadata;
             } else {
@@ -432,6 +451,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     this.transactionManager,
                     apiVersions);
             String ioThreadName = NETWORK_THREAD_PREFIX + " | " + clientId;
+            // 启动Sender对应的线程
             this.ioThread = new KafkaThread(ioThreadName, this.sender, true);
             this.ioThread.start();
             this.errors = this.metrics.sensor("errors");
@@ -775,6 +795,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     /**
      * Implementation of asynchronously send a record to a topic.
+     * KafkaProducer的send方法是生产者客户端消息发送逻辑的入口
      */
     private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
         TopicPartition tp = null;
@@ -783,6 +804,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             ClusterAndWaitTime clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);
             long remainingWaitMs = Math.max(0, maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs);
             Cluster cluster = clusterAndWaitTime.cluster;
+            // 序列化消息的key
             byte[] serializedKey;
             try {
                 serializedKey = keySerializer.serialize(record.topic(), record.headers(), record.key());
@@ -791,6 +813,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in key.serializer", cce);
             }
+            // 序列化消息的value
             byte[] serializedValue;
             try {
                 serializedValue = valueSerializer.serialize(record.topic(), record.headers(), record.value());
@@ -799,6 +822,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
+            // 选择这条消息的分区并构造TopicPartition，然后追加到记录收集器里
             int partition = partition(record, serializedKey, serializedValue, cluster);
             tp = new TopicPartition(record.topic(), partition);
 
@@ -818,6 +842,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs);
+            // 追加一条消息到收集器后，如果记录收集器满了，通知Sender发送消息
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
                 this.sender.wakeup();
@@ -1112,6 +1137,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * computes partition for given record.
      * if the record has partition returns the value otherwise
      * calls configured partitioner class to compute the partition.
+     * 为消息选择分区编号
      */
     private int partition(ProducerRecord<K, V> record, byte[] serializedKey, byte[] serializedValue, Cluster cluster) {
         Integer partition = record.partition();
