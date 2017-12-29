@@ -195,6 +195,7 @@ public class Sender implements Runnable {
 
     /**
      * Run a single iteration of sending
+     * 消息发送线程（Sender）读取记录收集器，按照节点分组，创建客户端请求，发送请求
      *
      * @param now The current POSIX time in milliseconds
      */
@@ -243,6 +244,7 @@ public class Sender implements Runnable {
         Cluster cluster = metadata.fetch();
 
         // get the list of partitions with data ready to send
+        // 获取准备发送的所有分区
         RecordAccumulator.ReadyCheckResult result = this.accumulator.ready(cluster, now);
 
         // if there are any partitions whose leaders are not known yet, force metadata update
@@ -256,6 +258,7 @@ public class Sender implements Runnable {
         }
 
         // remove any nodes we aren't ready to send to
+        // 建立到主副本节点的网络连接，移除还没有准备好的节点
         Iterator<Node> iter = result.readyNodes.iterator();
         long notReadyTimeout = Long.MAX_VALUE;
         while (iter.hasNext()) {
@@ -267,6 +270,7 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
+        // 读取记录收集器，返回的每个主副本节点对应批记录列表，每个批记录对应一个分区
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes,
                 this.maxRequestSize, now);
         if (guaranteeMessageOrder) {
