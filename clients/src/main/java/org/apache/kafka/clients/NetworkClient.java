@@ -444,7 +444,7 @@ public class NetworkClient implements KafkaClient {
 
     /**
      * Do actual reads and writes to sockets.
-     *
+     * NetworkClient的poll()轮询
      * @param timeout The maximum amount of time to wait (in ms) for responses if there are none immediately,
      *                must be non-negative. The actual timeout will be the minimum of timeout, request timeout and
      *                metadata timeout
@@ -678,7 +678,7 @@ public class NetworkClient implements KafkaClient {
 
     /**
      * Handle any completed request send. In particular if no response is expected consider the request complete.
-     *
+     * 处理已经完成的发送请求，如果不期望得到响应，就认为整个请求全部完成
      * @param responses The list of responses to update
      * @param now The current time
      */
@@ -699,7 +699,7 @@ public class NetworkClient implements KafkaClient {
 
     /**
      * Handle any completed receives and update the response list with the responses received.
-     *
+     * 处理已经完成的接收请求，根据接收到的响应更新响应列表
      * @param responses The list of responses to update
      * @param now The current time
      */

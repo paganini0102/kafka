@@ -691,6 +691,7 @@ public class Sender implements Runnable {
         }
         ProduceRequest.Builder requestBuilder = ProduceRequest.Builder.forMagic(minUsedMagic, acks, timeout,
                 produceRecordsByPartition, transactionalId);
+        // 回调函数会作为客户端请求的一个成员变量，当客户端请求完成后，会调用回调函数
         RequestCompletionHandler callback = new RequestCompletionHandler() {
             public void onComplete(ClientResponse response) {
                 handleProduceResponse(response, recordsByPartition, time.milliseconds());
