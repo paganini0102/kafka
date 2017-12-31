@@ -27,6 +27,9 @@ import java.net.Socket;
 import java.nio.channels.SelectionKey;
 import java.util.Objects;
 
+/**
+ * Kafka通道有负责字节操作的传输层、抽象的NetworkReceive和Send对象
+ */
 public class KafkaChannel {
     private final String id;
     private final TransportLayer transportLayer;

@@ -195,7 +195,6 @@ public class Sender implements Runnable {
 
     /**
      * Run a single iteration of sending
-     * 消息发送线程（Sender）读取记录收集器，按照节点分组，创建客户端请求，发送请求
      *
      * @param now The current POSIX time in milliseconds
      */
@@ -240,6 +239,11 @@ public class Sender implements Runnable {
         client.poll(pollTimeout, now);
     }
 
+    /**
+     * 消息发送线程（Sender）读取记录收集器，按照节点分组，创建客户端请求，发送请求
+     * @param now
+     * @return
+     */
     private long sendProducerData(long now) {
         Cluster cluster = metadata.fetch();
 
