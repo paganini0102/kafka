@@ -179,10 +179,15 @@ public class KafkaChannel {
         return socket.getInetAddress().toString();
     }
 
+    /**
+     * 选择器发送时，只是将请求设置到Kafka通道中，必须确保没有正在进行中的其他请求
+     * @param send
+     */
     public void setSend(Send send) {
+    	// 之前的Send请求还没有发送完毕，新的请求不能进来
         if (this.send != null)
             throw new IllegalStateException("Attempt to begin a send operation with prior send operation still in progress, connection id is " + id);
-        this.send = send;
+        this.send = send; // 当没有请求或上一个请求发送完毕时，才可以发送新请求
         this.transportLayer.addInterestOps(SelectionKey.OP_WRITE);
     }
 
@@ -208,11 +213,17 @@ public class KafkaChannel {
         return result;
     }
 
+    /**
+     * 选择器轮询时，检测到写事件时调用Kafka通道的write方法
+     * @return
+     * @throws IOException
+     */
     public Send write() throws IOException {
         Send result = null;
+        // 如果send方法返回值的false，表示请求还没有发送成功
         if (send != null && send(send)) {
             result = send;
-            send = null;
+            send = null; // 请求发送完毕，设置send=null，才可以发送下一个请求
         }
         return result;
     }
@@ -238,15 +249,17 @@ public class KafkaChannel {
         return receive.readFrom(transportLayer);
     }
 
+    /**
+     * 如果send在一次write调用时没有发送完，SelectionKey的OP_WRITE事件还没有取消，还会继续监听此channel的op_write事件直到整个send请求发送完毕才取消
+     * @param send
+     * @return
+     * @throws IOException
+     */
     private boolean send(Send send) throws IOException {
-    	// 如果send在一次write调用时没有发送完，SelectionKey的OP_WRITE事件还没有取消，还会继续监听此channel的op_write事件
-        // 直到整个send请求发送完毕才取消
         send.writeTo(transportLayer);
-        // 判断发送是否完成是通过ByteBuffer中是否还有剩余的字节来判断的
-        if (send.completed())
+        if (send.completed()) // Send请求全部写出去，取消写事件
             transportLayer.removeInterestOps(SelectionKey.OP_WRITE);
-
-        return send.completed();
+        return send.completed(); // Send没有写完全，会监听写事件
     }
 
     /**
