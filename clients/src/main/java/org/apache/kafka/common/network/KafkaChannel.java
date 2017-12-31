@@ -191,6 +191,11 @@ public class KafkaChannel {
         this.transportLayer.addInterestOps(SelectionKey.OP_WRITE);
     }
 
+    /**
+     * 选择器轮询时，检测到读事件时调用Kafka通道的write方法
+     * @return
+     * @throws IOException
+     */
     public NetworkReceive read() throws IOException {
         NetworkReceive result = null;
         // 初始化NetworkReceive
