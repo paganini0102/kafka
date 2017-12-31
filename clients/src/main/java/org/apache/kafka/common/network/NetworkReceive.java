@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A size delimited Receive that consists of a 4 byte network-ordered size N followed by N bytes of content
+ * 抽象的接收对象
  */
 public class NetworkReceive implements Receive {
 
@@ -34,12 +35,14 @@ public class NetworkReceive implements Receive {
     public final static int UNLIMITED = -1;
     private static final Logger log = LoggerFactory.getLogger(NetworkReceive.class);
     private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
-
+    /** 客户端接收响应的源节点 */
     private final String source;
+    /** 代表数据长度的字节缓冲区 */
     private final ByteBuffer size;
     private final int maxSize;
     private final MemoryPool memoryPool;
     private int requestedBufferSize = -1;
+    /** 代表数据内容的字节缓冲区 */
     private ByteBuffer buffer;
 
 

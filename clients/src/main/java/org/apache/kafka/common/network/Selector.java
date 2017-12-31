@@ -382,7 +382,8 @@ public class Selector implements Selectable, AutoCloseable {
      * requests from a channel are processed on the broker in the order they are sent. Since outstanding requests added
      * by SocketServer to the request queue may be processed by different request handler threads, requests on each
      * channel must be processed one-at-a-time to guarantee ordering.
-     *
+     * 选择器的轮询根据选择键读写，分别调用Kafka通道的read()和write()
+     * 
      * @param timeout The amount of time to wait, in milliseconds, which must be non-negative
      * @throws IllegalArgumentException If `timeout` is negative
      * @throws IllegalStateException If a send is given for which we have no existing connection or for which there is

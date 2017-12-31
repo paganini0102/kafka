@@ -23,11 +23,13 @@ import java.nio.channels.GatheringByteChannel;
 
 /**
  * A send backed by an array of byte buffers
+ * 抽象的发送对象
  */
 public class ByteBufferSend implements Send {
-
+	/** 客户端发送请求到目标节点 */
     private final String destination;
     private final int size;
+    /** 代表发送数据的字节缓冲区 */
     protected final ByteBuffer[] buffers;
     private int remaining;
     private boolean pending = false;
