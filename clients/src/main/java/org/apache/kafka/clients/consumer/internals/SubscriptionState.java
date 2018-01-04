@@ -74,12 +74,15 @@ public class SubscriptionState {
     private Pattern subscribedPattern;
 
     /* the list of topics the user has requested */
+    /** 用户注册的主题 */
     private Set<String> subscription;
 
     /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
+    /** 消费组订阅的主题 */
     private final Set<String> groupSubscription;
 
     /* the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
+    /** 分配和订阅方式都用assignment来存储消费者当前分配的分区及其状态 */
     private final PartitionStates<TopicPartitionState> assignment;
 
     /* do we need to request the latest committed offsets from the coordinator? */
@@ -180,7 +183,7 @@ public class SubscriptionState {
      * Change the assignment to the specified partitions provided by the user,
      * note this is different from {@link #assignFromSubscribed(Collection)}
      * whose input partitions are provided from the subscribed topics.
-     * 根据用户提供的指定的partitions 改变assignment
+     * 根据用户提供的指定的partitions改变assignment
      */
     public void assignFromUser(Set<TopicPartition> partitions) {
         setSubscriptionType(SubscriptionType.USER_ASSIGNED);

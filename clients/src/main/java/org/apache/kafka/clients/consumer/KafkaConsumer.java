@@ -873,6 +873,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * Note that this listener will immediately override any listener set in a previous call to subscribe.
      * It is guaranteed, however, that the partitions revoked/assigned through this interface are from topics
      * subscribed in this call. See {@link ConsumerRebalanceListener} for more details.
+     * KafkaConsumer的订阅主题和手动分配分区
      *
      * @param topics The list of topics to subscribe to
      * @param listener Non-null listener instance to get notifications on partition assignment/revocation for the
@@ -1034,7 +1035,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *                               (without a subsequent call to {@link #unsubscribe()})
      */
     @Override
-    public void assign(Collection<TopicPartition> partitions) { // assign 手动分配分区
+    public void assign(Collection<TopicPartition> partitions) { // KafkaConsumer的订阅主题和手动分配分区
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1057,9 +1058,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 this.coordinator.maybeAutoCommitOffsetsNow();
 
                 log.debug("Subscribed to partition(s): {}", Utils.join(partitions, ", "));
-                // 根据用户提供的指定的partitions 改变assignment
+                // 根据用户提供的指定的partitions改变assignment
                 this.subscriptions.assignFromUser(new HashSet<>(partitions));
-                // 更新metatdata topic
+                // 为元数据设置最新的主题
                 metadata.setTopics(topics); 
             }
         } finally {
