@@ -1145,6 +1145,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     /**
      * Do one round of polling. In addition to checking for new data, this does any needed offset commits
      * (if auto-commit is enabled), and offset resets (if an offset reset policy is defined).
+     * 消费者KafkaConsumer每一轮询时，都判断是否需要做准备工作
      * @param timeout The maximum time to block in the underlying call to {@link ConsumerNetworkClient#poll(long)}.
      * @return The fetched records (may be empty)
      */
@@ -1778,6 +1779,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     /**
      * Set the fetch position to the committed position (if there is one)
      * or reset it using the offset reset policy the user has configured.
+     * 更新分区的信息，包括刷新已经提交的偏移量、更新拉取偏移量
      *
      * @param partitions The partitions that needs updating fetch positions
      * @throws org.apache.kafka.common.errors.AuthenticationException if authentication fails. See the exception for more details
