@@ -206,7 +206,7 @@ public class SubscriptionState {
     /**
      * Change the assignment to the specified partitions returned from the coordinator,
      * note this is different from {@link #assignFromUser(Set)} which directly set the assignment from user inputs
-     * 根据coordinator返回的partitions改变这assignment
+     * 消费者分配到分区后，会调用该方法，将分区及其状态添加到assignments
      */
     public void assignFromSubscribed(Collection<TopicPartition> assignments) {
         if (!this.partitionsAutoAssigned())
@@ -292,6 +292,11 @@ public class SubscriptionState {
         return this.groupSubscription;
     }
 
+    /**
+     * 获取指定分区的状态对象
+     * @param tp
+     * @return
+     */
     private TopicPartitionState assignedState(TopicPartition tp) {
         TopicPartitionState state = this.assignment.stateValue(tp);
         if (state == null)
@@ -299,10 +304,20 @@ public class SubscriptionState {
         return state;
     }
 
+    /**
+     * 更新分区的消费偏移量
+     * @param tp
+     * @param offset
+     */
     public void committed(TopicPartition tp, OffsetAndMetadata offset) {
         assignedState(tp).committed(offset);
     }
 
+    /**
+     * 获取分区最新提交的消费偏移量
+     * @param tp
+     * @return
+     */
     public OffsetAndMetadata committed(TopicPartition tp) {
         return assignedState(tp).committed;
     }
@@ -319,6 +334,11 @@ public class SubscriptionState {
         this.needsFetchCommittedOffsets = false;
     }
 
+    /**
+     * 定位到分区的指定位置，更新拉取偏移量
+     * @param tp
+     * @param offset
+     */
     public void seek(TopicPartition tp, long offset) {
         assignedState(tp).seek(offset);
     }
@@ -328,7 +348,7 @@ public class SubscriptionState {
     }
 
     /**
-     * 获取分配的分区的状态，然后看哪些分区是可以fetch数据，返回那些可以fetch数据的topic partition
+     * 获取允许拉取，即存在拉取偏移量的分区，用来构建拉取请求
      * @return
      */
     public List<TopicPartition> fetchablePartitions() {
@@ -344,10 +364,20 @@ public class SubscriptionState {
         return this.subscriptionType == SubscriptionType.AUTO_TOPICS || this.subscriptionType == SubscriptionType.AUTO_PATTERN;
     }
 
+    /**
+     * 设置分区的拉取偏移量
+     * @param tp
+     * @param offset
+     */
     public void position(TopicPartition tp, long offset) {
         assignedState(tp).position(offset);
     }
 
+    /**
+     * 获取分区的拉取偏移量，拉取消息时使用最新的拉取位置
+     * @param tp
+     * @return
+     */
     public Long position(TopicPartition tp) {
         return assignedState(tp).position;
     }
@@ -397,7 +427,11 @@ public class SubscriptionState {
         return assignedState(partition).resetStrategy;
     }
 
-    // 判断下一次消费的位置是否为空
+    /**
+     * 判断下一次消费的位置是否为空
+     * @param partitions
+     * @return
+     */
     public boolean hasAllFetchPositions(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions)
             if (!hasValidPosition(partition))
@@ -405,11 +439,18 @@ public class SubscriptionState {
         return true;
     }
 
+    /**
+     * 判断是否所有的分区都存在有效的拉取偏移量
+     * @return
+     */
     public boolean hasAllFetchPositions() {
         return hasAllFetchPositions(this.assignedPartitions());
     }
 
-    // 如果下一次消费位置没有，则返回那些TopicPartition集合
+    /**
+     * 并不是所有分区都有拉取偏移量，找出没有拉取偏移量的分区
+     * @return
+     */
     public Set<TopicPartition> missingFetchPositions() {
         Set<TopicPartition> missing = new HashSet<>();
         for (PartitionStates.PartitionState<TopicPartitionState> state : assignment.partitionStates()) {
@@ -427,7 +468,11 @@ public class SubscriptionState {
         return isAssigned(tp) && assignedState(tp).paused;
     }
 
-    // 判断该分区是否分配了，而且是否可以fetch数据了
+    /**
+     * 判断该分区是否分配了，而且是否可以fetch数据了
+     * @param tp
+     * @return
+     */
     public boolean isFetchable(TopicPartition tp) {
         return isAssigned(tp) && assignedState(tp).isFetchable();
     }
@@ -436,10 +481,18 @@ public class SubscriptionState {
         return isAssigned(tp) && assignedState(tp).hasValidPosition();
     }
 
+    /**
+     * 暂停拉取分区
+     * @param tp
+     */
     public void pause(TopicPartition tp) {
         assignedState(tp).pause();
     }
 
+    /**
+     * 恢复拉取分区
+     * @param tp
+     */
     public void resume(TopicPartition tp) {
         assignedState(tp).resume();
     }
@@ -473,6 +526,9 @@ public class SubscriptionState {
         return map;
     }
 
+    /**
+     * 分区的状态，包括拉取偏移量和消费偏移量的状态信息
+     */
     private static class TopicPartitionState {
     	/** 下一次要从kafka服务器端获取消息的offset */
         private Long position; // last consumed position
@@ -494,9 +550,10 @@ public class SubscriptionState {
             this.resetStrategy = null;
         }
 
-        private void awaitReset(OffsetResetStrategy strategy) {
-            this.resetStrategy = strategy;
-            this.position = null;
+        // 重置拉取偏移量（第一次分配给消费者时调用）
+        private void awaitReset(OffsetResetStrategy strategy) { // 准备重置
+            this.resetStrategy = strategy; // 设置重置策略
+            this.position = null; // 清空position
         }
 
         public boolean awaitingReset() {
@@ -508,13 +565,15 @@ public class SubscriptionState {
             return position != null;
         }
 
+        // 开始重置
         private void seek(long offset) {
             this.position = offset;
             this.resetStrategy = null;
         }
 
+        // 更新拉取偏移量（拉取线程在拉取到消息后调用）
         private void position(long offset) {
-            if (!hasValidPosition())
+            if (!hasValidPosition()) // 当前position必须有效，才可以更新position
                 throw new IllegalStateException("Cannot set a new position without a valid current position");
             this.position = offset;
         }
@@ -532,7 +591,7 @@ public class SubscriptionState {
         }
 
         private boolean isFetchable() {
-            return !paused && hasValidPosition();
+            return !paused && hasValidPosition(); // 没有暂停，且position有效才可以拉取
         }
 
     }
