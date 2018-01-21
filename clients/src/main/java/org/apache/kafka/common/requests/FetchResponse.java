@@ -55,10 +55,12 @@ public class FetchResponse extends AbstractResponse {
 
     // partition level field names
     private static final String PARTITION_HEADER_KEY_NAME = "partition_header";
+    /** leader的high_watermark */
     private static final String HIGH_WATERMARK_KEY_NAME = "high_watermark";
     private static final String LAST_STABLE_OFFSET_KEY_NAME = "last_stable_offset";
     private static final String LOG_START_OFFSET_KEY_NAME = "log_start_offset";
     private static final String ABORTED_TRANSACTIONS_KEY_NAME = "aborted_transactions";
+    /** fetch到的消息数据 */
     private static final String RECORD_SET_KEY_NAME = "record_set";
 
     // aborted transaction field names

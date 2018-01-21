@@ -39,18 +39,23 @@ import static org.apache.kafka.common.protocol.types.Type.INT8;
 
 public class FetchRequest extends AbstractRequest {
     public static final int CONSUMER_REPLICA_ID = -1;
+    /** 用来标志follower的id */
     private static final String REPLICA_ID_KEY_NAME = "replica_id";
+    /** 请求最大等待事件 */
     private static final String MAX_WAIT_KEY_NAME = "max_wait_time";
+    /** 相应的最小负载 */
     private static final String MIN_BYTES_KEY_NAME = "min_bytes";
     private static final String ISOLATION_LEVEL_KEY_NAME = "isolation_level";
     private static final String TOPICS_KEY_NAME = "topics";
 
+    /** 每次fetch的最大字节数 */
     // request and partition level name
     private static final String MAX_BYTES_KEY_NAME = "max_bytes";
 
     // topic level field names
     private static final String PARTITIONS_KEY_NAME = "partitions";
 
+    /** 需要fetch消息的offset */
     // partition level field names
     private static final String FETCH_OFFSET_KEY_NAME = "fetch_offset";
     private static final String LOG_START_OFFSET_KEY_NAME = "log_start_offset";
