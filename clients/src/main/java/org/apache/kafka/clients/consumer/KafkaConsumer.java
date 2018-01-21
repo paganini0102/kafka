@@ -1167,7 +1167,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             return records;
 
         // send any new fetches (won't resend pending fetches)
-        // 我们需要发送新fetch请求
+        // 发送拉取请求，后续的步骤和拉取相关
         fetcher.sendFetches();
 
         long now = time.milliseconds();
@@ -1791,7 +1791,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         // case if the user called seekToBeginning or seekToEnd. We do this check first to
         // avoid an unnecessary lookup of committed offsets (which typically occurs when
         // the user is manually assigning partitions and managing their own offsets).
-        fetcher.resetOffsetsIfNeeded(partitions);
+        fetcher.resetOffsetsIfNeeded(partitions); // 如果有必要，更新提交偏移量
 
         if (!subscriptions.hasAllFetchPositions(partitions)) {
             // if we still don't have offsets for the given partitions, then we should either
@@ -1801,7 +1801,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             coordinator.refreshCommittedOffsetsIfNeeded();
 
             // then do any offset lookups in case some positions are not known
-            fetcher.updateFetchPositions(partitions);
+            fetcher.updateFetchPositions(partitions); // 更新分区的拉取偏移量
         }
     }
 

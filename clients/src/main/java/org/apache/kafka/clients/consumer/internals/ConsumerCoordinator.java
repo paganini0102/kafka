@@ -76,7 +76,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     private final ConsumerCoordinatorMetrics sensors;
     /** 一个跟踪消费者的主题列表，分区列表和offsets的类 */
     private final SubscriptionState subscriptions;
-    /** 提交offset 的回调类 */
+    /** 提交offset的回调类 */
     private final OffsetCommitCallback defaultOffsetCommitCallback;
     /** 是否开启了自动提交offset的功能 */
     private final boolean autoCommitEnabled;
