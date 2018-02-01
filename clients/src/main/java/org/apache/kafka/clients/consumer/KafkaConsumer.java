@@ -1110,7 +1110,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 throw new IllegalStateException("Consumer is not subscribed to any topics or assigned any partitions");
 
             // poll for new data until the timeout expires
-            long start = time.milliseconds(); // 一直poll新数据直到超时
+            long start = time.milliseconds(); 
             long remaining = timeout;
             do {
             	// 获取数据，如果自动提交，则进行偏移量自动提交，如果设置offset重置，则进行offset重置
@@ -1134,7 +1134,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 long elapsed = time.milliseconds() - start;
                 remaining = timeout - elapsed;
-            } while (remaining > 0);
+            } while (remaining > 0); // 一直poll新数据直到超时
 
             return ConsumerRecords.empty();
         } finally {

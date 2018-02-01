@@ -306,7 +306,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         invokeCompletedOffsetCommitCallbacks();
         // 判断订阅状态是否自动分配分区
         if (subscriptions.partitionsAutoAssigned()) {
-        	// coordinator不为空
+        	// coordinator为空
             if (coordinatorUnknown()) {
             	// 确保coordinator已经准备好接收请求了
                 ensureCoordinatorReady();
@@ -340,8 +340,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 now = time.milliseconds();
             }
         }
-
+        // 检测心跳线程的状态
         pollHeartbeat(now);
+        // 异步的自动提交offset
         maybeAutoCommitOffsetsAsync(now);
     }
 
@@ -481,7 +482,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      */
     public void refreshCommittedOffsetsIfNeeded() {
         if (subscriptions.refreshCommitsNeeded()) {
+        	// 对于分配的partition,从协调器中获取当前已提交的偏移量
             Map<TopicPartition, OffsetAndMetadata> offsets = fetchCommittedOffsets(subscriptions.assignedPartitions());
+            // 遍历TopicPartition
             for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
                 TopicPartition tp = entry.getKey();
                 // verify assignment is still active
@@ -489,6 +492,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 	// 更新分区状态的committed变量，协调节点保存的数据更新到客户端
                     this.subscriptions.committed(tp, entry.getValue());
             }
+            // 刷新提交
             this.subscriptions.commitsRefreshed();
         }
     }
