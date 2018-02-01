@@ -633,24 +633,25 @@ public abstract class AbstractCoordinator implements Closeable {
         @Override
         public void onSuccess(ClientResponse resp, RequestFuture<Void> future) {
             log.debug("Received GroupCoordinator response {}", resp);
-
+            // 创建FindCoordinatorResponse对象
             FindCoordinatorResponse findCoordinatorResponse = (FindCoordinatorResponse) resp.responseBody();
             // use MAX_VALUE - node.id as the coordinator id to mimic separate connections
             // for the coordinator in the underlying network client layer
             // TODO: this needs to be better handled in KAFKA-1935
             Errors error = findCoordinatorResponse.error();
             clearFindCoordinatorFuture();
-            if (error == Errors.NONE) {
+            if (error == Errors.NONE) { // 如果没有错误
                 synchronized (AbstractCoordinator.this) {
+                	// 构建一个Node对象赋给coordinator
                     AbstractCoordinator.this.coordinator = new Node(
                             Integer.MAX_VALUE - findCoordinatorResponse.node().id(),
                             findCoordinatorResponse.node().host(),
                             findCoordinatorResponse.node().port());
                     log.info("Discovered coordinator {}", coordinator);
-                    client.tryConnect(coordinator);
+                    client.tryConnect(coordinator); // 开始尝试和coordinator节点建立联系
                     heartbeat.resetTimeouts(time.milliseconds());
                 }
-                future.complete(null);
+                future.complete(null); // 将正常后到FindCoordinatorResponse的事件传播出去
             } else if (error == Errors.GROUP_AUTHORIZATION_FAILED) {
                 future.raise(new GroupAuthorizationException(groupId));
             } else {

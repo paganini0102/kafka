@@ -1075,7 +1075,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * On each poll, consumer will try to use the last consumed offset as the starting offset and fetch sequentially. The last
      * consumed offset can be manually set through {@link #seek(TopicPartition, long)} or automatically set as the last committed
      * offset for the subscribed list of partitions
-     *
+     * 从指定的主题或者分区获取数据，在poll之气那，你没有订阅任何主题或分区是不行的，每一次调用poll方法时，消费者都会尝试使用最后一次消费的offset
+     * 作为接下来获取数据的start offset，最后一次消费的offset也可以通过seek(TopicPartition, long)设置或者自动设置
      *
      * @param timeout The time, in milliseconds, spent waiting in poll if data is not available in the buffer.
      *            If 0, returns immediately with any records that are available currently in the buffer, else returns empty.
@@ -1109,8 +1110,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             if (this.subscriptions.hasNoSubscriptionOrUserAssignment())
                 throw new IllegalStateException("Consumer is not subscribed to any topics or assigned any partitions");
 
+            // 一直poll新数据直到超时
             // poll for new data until the timeout expires
-            long start = time.milliseconds(); // 一直poll新数据直到超时
+            long start = time.milliseconds(); 
             long remaining = timeout;
             do {
             	// 获取数据，如果自动提交，则进行偏移量自动提交，如果设置offset重置，则进行offset重置
