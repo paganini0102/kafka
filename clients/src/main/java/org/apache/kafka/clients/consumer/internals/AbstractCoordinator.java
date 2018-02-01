@@ -624,6 +624,7 @@ public abstract class AbstractCoordinator implements Closeable {
         log.debug("Sending GroupCoordinator request to broker {}", node);
         FindCoordinatorRequest.Builder requestBuilder =
                 new FindCoordinatorRequest.Builder(FindCoordinatorRequest.CoordinatorType.GROUP, this.groupId);
+        // ConsumerNetworkClient会新建一个ClientRequest请求放到unsent集合中，等待发送并返回RequestFuture对象，并返回的RequestFuture对象经过compose的适配
         return client.send(node, requestBuilder)
                      .compose(new GroupCoordinatorResponseHandler());
     }

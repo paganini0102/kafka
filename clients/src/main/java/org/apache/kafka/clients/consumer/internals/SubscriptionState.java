@@ -59,7 +59,7 @@ public class SubscriptionState {
 
     /**
      * NONE: 没有状态
-	 * AUTO_TOPICS：按照指定的topic 名字进行订阅，自动分配分区
+	 * AUTO_TOPICS：按照指定的topic名字进行订阅，自动分配分区
 	 * AUTO_PATTERN：按照正则表达式匹配topic名字进行订阅，自动分配分区
 	 * USER_ASSIGNED：用户自己指定订阅的topic以及分区号
      */

@@ -1136,7 +1136,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 long elapsed = time.milliseconds() - start;
                 remaining = timeout - elapsed;
-            } while (remaining > 0);
+            } while (remaining > 0); // 一直poll新数据直到超时
 
             return ConsumerRecords.empty();
         } finally {
