@@ -225,6 +225,7 @@ public abstract class AbstractCoordinator implements Closeable {
         long remainingMs = timeoutMs;
 
         while (coordinatorUnknown()) {
+        	// 找GroupCoordinator，并返回一个请求结果
             RequestFuture<Void> future = lookupCoordinator();
             client.poll(future, remainingMs);
 
@@ -235,7 +236,8 @@ public abstract class AbstractCoordinator implements Closeable {
                         break;
 
                     log.debug("Coordinator discovery failed, refreshing metadata");
-                    client.awaitMetadataUpdate(remainingMs);  // 阻塞更新metadata中的集群元数据
+                    // 阻塞更新metadata中的集群元数据
+                    client.awaitMetadataUpdate(remainingMs);  
                 } else
                     throw future.exception();
             } else if (coordinator != null && client.connectionFailed(coordinator)) {
@@ -370,8 +372,8 @@ public abstract class AbstractCoordinator implements Closeable {
         }
     }
 
-    // visible for testing. Joins the group without starting the heartbeat thread.
     // 进行Join Group操作会初始化JoinGroupRequest，并且发送请求到服务器端
+    // visible for testing. Joins the group without starting the heartbeat thread.
     void joinGroupIfNeeded() {
     	// 是否允许重新加入
         while (needRejoin() || rejoinIncomplete()) {
@@ -384,7 +386,7 @@ public abstract class AbstractCoordinator implements Closeable {
             // refresh which changes the matched subscription set) can occur while another rebalance is
             // still in progress.
             if (needsJoinPrepare) {
-            	// 进行发送JoinGroupRequest之前的准备
+            	// 发送JoinGroupRequest之前的准备
                 onJoinPrepare(generation.generationId, generation.memberId);
                 // needsJoinPrepare置为false，表示已经准备好了
                 needsJoinPrepare = false;

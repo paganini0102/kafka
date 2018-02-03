@@ -150,8 +150,9 @@ public class ConsumerNetworkClient implements Closeable {
      * until it has completed).
      */
     public void ensureFreshMetadata() {
+    	// 如果Metadata.needUpdate字段为true或者长时间没有更新，则更新Metadata数据
         if (this.metadata.updateRequested() || this.metadata.timeToNextUpdate(time.milliseconds()) == 0)
-            awaitMetadataUpdate();
+            awaitMetadataUpdate(); // 会阻塞
     }
 
     /**
