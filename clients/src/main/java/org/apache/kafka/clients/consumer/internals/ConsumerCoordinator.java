@@ -212,7 +212,12 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         });
     }
 
-    // 查找指定的分区分配策略
+    /**
+     * 查找指定的分区分配策略
+     * assignors为PartitionAssignor列表。在消费者发送的JoinGroupRequest请求中包含了消费者自身支持的PartitionAssignor信息，
+     * GroupCoordinator从所有消费者都支持的分配策略中选择一个，通知Leader使用此分配策略进行分区分配。此字段的值通
+     * 过partition.assignment.strategy参数配置，可以配置多个。
+     */
     private PartitionAssignor lookupAssignor(String name) {
         for (PartitionAssignor assignor : this.assignors) {
             if (assignor.name().equals(name))
@@ -228,11 +233,11 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                                   String assignmentStrategy,
                                   ByteBuffer assignmentBuffer) {
         // only the leader is responsible for monitoring for metadata changes (i.e. partition changes)
-    	// 只有leader才会监控元数据的改变
+    	// 如果是leader则需监控元数据的改变
         if (!isLeader)
             assignmentSnapshot = null;
 
-        // 获取partition分配策略
+        // 根据Coordinator指定的消费组协议，获取唯一的分区分配器
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
