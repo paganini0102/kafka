@@ -99,7 +99,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       request.header.apiKey match {
         case ApiKeys.PRODUCE => handleProduceRequest(request)
         case ApiKeys.FETCH => handleFetchRequest(request)
-        case ApiKeys.LIST_OFFSETS => handleListOffsetRequest(request)
+        case ApiKeys.LIST_OFFSETS => handleListOffsetRequest(request) //获取偏移量  
         case ApiKeys.METADATA => handleTopicMetadataRequest(request)
         case ApiKeys.LEADER_AND_ISR => handleLeaderAndIsrRequest(request)
         case ApiKeys.STOP_REPLICA => handleStopReplicaRequest(request)
@@ -646,12 +646,14 @@ class KafkaApis(val requestChannel: RequestChannel,
     val responseMap = authorizedRequestInfo.map {case (topicPartition, partitionData) =>
       try {
         // ensure leader exists
+        // 确定是否是leader replica，因为只有leader可以响应offset请求
+        // 如果不是会抛异常
         val localReplica = if (offsetRequest.replicaId != ListOffsetRequest.DEBUGGING_REPLICA_ID)
           replicaManager.getLeaderReplicaIfLocal(topicPartition)
         else
           replicaManager.getReplicaOrException(topicPartition)
         val offsets = {
-          val allOffsets = fetchOffsets(replicaManager.logManager,
+          val allOffsets = fetchOffsets(replicaManager.logManager, // 获取offsets列表
             topicPartition,
             partitionData.timestamp,
             partitionData.maxNumOffsets)
@@ -659,7 +661,7 @@ class KafkaApis(val requestChannel: RequestChannel,
             allOffsets
           } else {
             val hw = localReplica.highWatermark.messageOffset
-            if (allOffsets.exists(_ > hw))
+            if (allOffsets.exists(_ > hw)) // 过滤掉hw以后的offsets，因为那些都不是应该用户可见的
               hw +: allOffsets.dropWhile(_ > hw)
             else
               allOffsets
@@ -1145,6 +1147,7 @@ class KafkaApis(val requestChannel: RequestChannel,
     val joinGroupRequest = request.body[JoinGroupRequest]
 
     // the callback for sending a join-group response
+    // 定义回调方法
     def sendResponseCallback(joinResult: JoinGroupResult) {
       val members = joinResult.members map { case (memberId, metadataArray) => (memberId, ByteBuffer.wrap(metadataArray)) }
       def createResponse(requestThrottleMs: Int): AbstractResponse = {

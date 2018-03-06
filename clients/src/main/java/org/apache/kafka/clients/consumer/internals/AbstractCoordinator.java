@@ -510,11 +510,11 @@ public abstract class AbstractCoordinator implements Closeable {
                 sensors.joinLatency.record(response.requestLatencyMs());
 
                 synchronized (AbstractCoordinator.this) {
-                	// 当前客户端状态不是REBALANCING
+                	// 判断当前客户端是不是正在REBALANCING
                     if (state != MemberState.REBALANCING) {
                         // if the consumer was woken up before a rebalance completes, we may have already left
                         // the group. In this case, we do not want to continue with the sync group.
-                    	// 广播异常
+                    	// 如果当前客户端并不在REBALANCING状态，则直接广播异常退出
                         future.raise(new UnjoinedGroupException());
                     } else {
                     	// 解析JoinGroupResponse
@@ -522,8 +522,10 @@ public abstract class AbstractCoordinator implements Closeable {
                                 joinResponse.memberId(), joinResponse.groupProtocol());
                         // 判断响应节点是不是leader，如果是leader进入onJoinLeader，否则进入onJoinFollower
                         if (joinResponse.isLeader()) {
+                        	// leader节点需要相应结果执行分区分配
                             onJoinLeader(joinResponse).chain(future);
                         } else {
+                        	// 非leader节点无需响应结果，只需发送同步组请求
                             onJoinFollower().chain(future);
                         }
                     }
