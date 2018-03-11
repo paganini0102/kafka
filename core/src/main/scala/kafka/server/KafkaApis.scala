@@ -117,10 +117,15 @@ class KafkaApis(val requestChannel: RequestChannel,
         case ApiKeys.OFFSET_COMMIT => handleOffsetCommitRequest(request)
         // 获取消费者获取消费详情的请求
         case ApiKeys.OFFSET_FETCH => handleOffsetFetchRequest(request)
+        // 生产者寻找对应的Coordinator的请求
         case ApiKeys.FIND_COORDINATOR => handleFindCoordinatorRequest(request)
+        // 消费者发送加入组的请求
         case ApiKeys.JOIN_GROUP => handleJoinGroupRequest(request)
+        // 消费者发送心跳的请求
         case ApiKeys.HEARTBEAT => handleHeartbeatRequest(request)
+        // 消费者发送离开组的请求
         case ApiKeys.LEAVE_GROUP => handleLeaveGroupRequest(request)
+        // 消费者同步组的请求
         case ApiKeys.SYNC_GROUP => handleSyncGroupRequest(request)
         case ApiKeys.DESCRIBE_GROUPS => handleDescribeGroupRequest(request)
         case ApiKeys.LIST_GROUPS => handleListGroupsRequest(request)
