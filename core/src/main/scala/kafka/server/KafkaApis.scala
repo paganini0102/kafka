@@ -97,15 +97,25 @@ class KafkaApis(val requestChannel: RequestChannel,
       trace(s"Handling request:${request.requestDesc(true)} from connection ${request.context.connectionId};" +
         s"securityProtocol:${request.context.securityProtocol},principal:${request.context.principal}")
       request.header.apiKey match {
+        // 生产者发送消息的请求
         case ApiKeys.PRODUCE => handleProduceRequest(request)
+        // 消费者获取消息的请求
         case ApiKeys.FETCH => handleFetchRequest(request)
-        case ApiKeys.LIST_OFFSETS => handleListOffsetRequest(request) //获取偏移量  
+        // 获取Topic当前offset的元数据信息的请求
+        case ApiKeys.LIST_OFFSETS => handleListOffsetRequest(request)
+        // 获取Topic元数据信息的请求
         case ApiKeys.METADATA => handleTopicMetadataRequest(request)
+        // Topic的元数据信息发生变化的请求
         case ApiKeys.LEADER_AND_ISR => handleLeaderAndIsrRequest(request)
+        // 停止拷贝副本数据的请求
         case ApiKeys.STOP_REPLICA => handleStopReplicaRequest(request)
+        // 更新Topic元数据信息的请求
         case ApiKeys.UPDATE_METADATA => handleUpdateMetadataRequest(request)
+        // Broker Server下线的请求
         case ApiKeys.CONTROLLED_SHUTDOWN => handleControlledShutdownRequest(request)
+        // 消费者保存偏移量的请求
         case ApiKeys.OFFSET_COMMIT => handleOffsetCommitRequest(request)
+        // 获取消费者获取消费详情的请求
         case ApiKeys.OFFSET_FETCH => handleOffsetFetchRequest(request)
         case ApiKeys.FIND_COORDINATOR => handleFindCoordinatorRequest(request)
         case ApiKeys.JOIN_GROUP => handleJoinGroupRequest(request)
