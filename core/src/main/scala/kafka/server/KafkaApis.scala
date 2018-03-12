@@ -127,7 +127,9 @@ class KafkaApis(val requestChannel: RequestChannel,
         case ApiKeys.LEAVE_GROUP => handleLeaveGroupRequest(request)
         // 消费者同步组的请求
         case ApiKeys.SYNC_GROUP => handleSyncGroupRequest(request)
+        // 表述消费组的请求
         case ApiKeys.DESCRIBE_GROUPS => handleDescribeGroupRequest(request)
+        // 列出某个Broker管理所有组的请求
         case ApiKeys.LIST_GROUPS => handleListGroupsRequest(request)
         case ApiKeys.SASL_HANDSHAKE => handleSaslHandshakeRequest(request)
         case ApiKeys.API_VERSIONS => handleApiVersionsRequest(request)
