@@ -1160,11 +1160,14 @@ class KafkaApis(val requestChannel: RequestChannel,
     }
   }
 
+  /**
+   * KafkaApis处理每个消费者发送的“加入组请求”
+   */
   def handleJoinGroupRequest(request: RequestChannel.Request) {
     val joinGroupRequest = request.body[JoinGroupRequest]
 
     // the callback for sending a join-group response
-    // 定义回调方法
+    // 首先定义“发送加入组响应结果”的回调方法
     def sendResponseCallback(joinResult: JoinGroupResult) {
       val members = joinResult.members map { case (memberId, metadataArray) => (memberId, ByteBuffer.wrap(metadataArray)) }
       def createResponse(requestThrottleMs: Int): AbstractResponse = {
@@ -1190,25 +1193,36 @@ class KafkaApis(val requestChannel: RequestChannel,
           Collections.emptyMap())
       )
     } else {
+      // 交给服务端的协调者对象（GroupCoordinator）处理消费者的加入组请求
       // let the coordinator to handle join-group
       val protocols = joinGroupRequest.groupProtocols().asScala.map(protocol =>
         (protocol.name, Utils.toArray(protocol.metadata))).toList
       groupCoordinator.handleJoinGroup(
+        // 消费组编号
         joinGroupRequest.groupId,
+        // 消费者成员编号
         joinGroupRequest.memberId,
+        // 发送请求的客户端编号
         request.header.clientId,
+        // 发送请求的客户端地址
         request.session.clientAddress.toString,
         joinGroupRequest.rebalanceTimeout,
+        // 会话超时时间
         joinGroupRequest.sessionTimeout,
+        // 协议类型
         joinGroupRequest.protocolType,
+        // 协议内容（协议名称和元数据）
         protocols,
         sendResponseCallback)
     }
   }
 
+  /**
+   * KafkaApis处理每个消费者发送的“同步组请求”
+   */
   def handleSyncGroupRequest(request: RequestChannel.Request) {
     val syncGroupRequest = request.body[SyncGroupRequest]
-
+    // 首先定义“发送同步组响应结果”的回调方法
     def sendResponseCallback(memberState: Array[Byte], error: Errors) {
       sendResponseMaybeThrottle(request, requestThrottleMs =>
         new SyncGroupResponse(requestThrottleMs, error, ByteBuffer.wrap(memberState)))
@@ -1217,6 +1231,7 @@ class KafkaApis(val requestChannel: RequestChannel,
     if (!authorize(request.session, Read, new Resource(Group, syncGroupRequest.groupId()))) {
       sendResponseCallback(Array[Byte](), Errors.GROUP_AUTHORIZATION_FAILED)
     } else {
+      // 交给服务端的协调者对象（GroupCoordinator）处理消费者的同步组请求
       groupCoordinator.handleSyncGroup(
         syncGroupRequest.groupId,
         syncGroupRequest.generationId,
