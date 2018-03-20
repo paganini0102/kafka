@@ -285,6 +285,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
                               connectionQuotas: ConnectionQuotas) extends AbstractServerThread(connectionQuotas) with KafkaMetricsGroup {
 
   private val nioSelector = NSelector.open()
+  // 开启Socket服务
   val serverChannel = openServerSocket(endPoint.host, endPoint.port)
 
   this.synchronized {
@@ -298,10 +299,12 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
    * Accept loop that checks for new connection attempts
    */
   def run() {
+    // 注册Accept事件
     serverChannel.register(nioSelector, SelectionKey.OP_ACCEPT)
     startupComplete()
     try {
       var currentProcessor = 0
+      // 监听Accept事件
       while (isRunning) {
         try {
           val ready = nioSelector.select(500)
