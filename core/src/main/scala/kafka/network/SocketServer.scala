@@ -95,6 +95,7 @@ class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time
   def startup() {  
     this.synchronized { 
 
+      // 每个ip的连接数限制
       connectionQuotas = new ConnectionQuotas(maxConnectionsPerIp, maxConnectionsPerIpOverrides)
 
       val sendBufferSize = config.socketSendBufferBytes
