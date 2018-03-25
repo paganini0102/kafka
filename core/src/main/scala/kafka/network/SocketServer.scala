@@ -552,10 +552,11 @@ private[kafka] class Processor(val id: Int,
             // that are sitting in the server's socket buffer
             updateRequestMetrics(curr)
             trace("Socket server received empty response to send, registering for read: " + curr)
-            openOrClosingChannel(channelId).foreach(c => selector.unmute(c.id))
+            openOrClosingChannel(channelId).foreach(c => selector.unmute(c.id)) // 注册OP_READ事件
           case RequestChannel.SendAction => // 该响应需要发送给客户端
             val responseSend = curr.responseSend.getOrElse(
               throw new IllegalStateException(s"responseSend must be defined for SendAction, response: $curr"))
+            // 调用KSelector#send()方法，并将响应放入inflightResponses队列缓存
             sendResponse(curr, responseSend)
           case RequestChannel.CloseConnectionAction =>
             updateRequestMetrics(curr)
@@ -598,6 +599,7 @@ private[kafka] class Processor(val id: Int,
   }
 
   private def processCompletedReceives() {
+    // 遍历KSelector#completedReceives队列
     selector.completedReceives.asScala.foreach { receive =>
       try {
         openOrClosingChannel(receive.source) match {
@@ -605,9 +607,14 @@ private[kafka] class Processor(val id: Int,
             val header = RequestHeader.parse(receive.payload)
             val context = new RequestContext(header, receive.source, channel.socketAddress,
               channel.principal, listenerName, securityProtocol)
+            
             val req = new RequestChannel.Request(processor = id, context = context,
               startTimeNanos = time.nanoseconds, memoryPool, receive.payload, requestChannel.metrics)
+            
+            // 将RequestChannel.Request放入RequestChannel.requestQueue队列中等待处理
             requestChannel.sendRequest(req)
+            
+            // 取消注册OP_READ事件，连接不再读取数据
             selector.mute(receive.source)
           case None =>
             // This should never happen since completed receives are processed immediately after `poll()`
