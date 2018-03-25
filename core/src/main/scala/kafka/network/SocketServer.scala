@@ -445,8 +445,9 @@ private[kafka] class Processor(val id: Int,
   private[network] case class ConnectionId(localHost: String, localPort: Int, remoteHost: String, remotePort: Int, index: Int) {
     override def toString: String = s"$localHost:$localPort-$remoteHost:$remotePort-$index"
   }
-
+  /** ConcurrentLinkedQueue[SocketChannel]类型，其中保存了当前Processor处理的新建的SocketChannel */
   private val newConnections = new ConcurrentLinkedQueue[SocketChannel]()
+  /** 保存未发送的响应 */
   private val inflightResponses = mutable.Map[String, RequestChannel.Response]()
   private[kafka] val metricTags = mutable.LinkedHashMap(
     "listener" -> listenerName.value,
@@ -463,7 +464,7 @@ private[kafka] class Processor(val id: Int,
     // also includes the listener name)
     Map("networkProcessor" -> id.toString)
   )
-
+  /** KSelector类型，负责管理网络连接 */
   private val selector = createSelector(
       ChannelBuilders.serverChannelBuilder(listenerName, securityProtocol, config, credentialProvider.credentialCache))
   // Visible to override for testing
