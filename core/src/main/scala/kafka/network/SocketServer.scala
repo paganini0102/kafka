@@ -487,19 +487,26 @@ private[kafka] class Processor(val id: Int,
   private var nextConnectionIndex = 0
 
   override def run() {
-    startupComplete()
+    // 标记Processor启动流程已经完成，唤醒等待的线程
+    startupComplete() 
     try {
-      while (isRunning) {
+      // 检测alive字段标识的运行状态
+      while (isRunning) { 
         try {
-          // 针对新的连接，注册其上的OP_READ事件
+          // 处理newConnections队列中的新建SocketChannel，队列中的每个
+          // SocketChannel都要在NIOSelector上注册OP_READ事件
           // setup any new connections that have been queued up
-          configureNewConnections()
-          // 从RequestChannel获取响应产生OP_WRITE事件
+          configureNewConnections() 
+          // 处理RequestChannel中缓存的响应
           // register any new responses for writing
           processNewResponses()
+          // 通过KSelector#poll()方法，进行网络I/O
           poll()
+          // 处理KSelector#completedReceives队列
           processCompletedReceives()
+          // 处理KSelector#completedSends队列
           processCompletedSends()
+          // 处理KSelector#disconnected队列
           processDisconnected()
         } catch {
           // We catch all the throwables here to prevent the processor thread from exiting. We do this because
@@ -534,18 +541,19 @@ private[kafka] class Processor(val id: Int,
   }
 
   private def processNewResponses() {
+    // 在RequestChannel中使用Processor的Id绑定与responseQueu的对应关系，获取对应responseQueue中的响应
     var curr: RequestChannel.Response = null
     while ({curr = requestChannel.receiveResponse(id); curr != null}) {
       val channelId = curr.request.context.connectionId
       try {
         curr.responseAction match {
-          case RequestChannel.NoOpAction =>
+          case RequestChannel.NoOpAction => // 没有响应需要发送给客户端
             // There is no response to send to the client, we need to read more pipelined requests
             // that are sitting in the server's socket buffer
             updateRequestMetrics(curr)
             trace("Socket server received empty response to send, registering for read: " + curr)
             openOrClosingChannel(channelId).foreach(c => selector.unmute(c.id))
-          case RequestChannel.SendAction =>
+          case RequestChannel.SendAction => // 该响应需要发送给客户端
             val responseSend = curr.responseSend.getOrElse(
               throw new IllegalStateException(s"responseSend must be defined for SendAction, response: $curr"))
             sendResponse(curr, responseSend)
@@ -673,7 +681,9 @@ private[kafka] class Processor(val id: Int,
    * Queue up a new connection for reading
    */
   def accept(socketChannel: SocketChannel) {
+    // 将SocketChannel添加到newConnections队列中
     newConnections.add(socketChannel)
+    // Processor#wakeup()方法通过调用KSelector#wakeup()方法实现，最终调用底层的Java NIO Selector的wakeup()方法
     wakeup()
   }
 
@@ -681,7 +691,7 @@ private[kafka] class Processor(val id: Int,
    * Register any new connections that have been queued up
    */
   private def configureNewConnections() {
-    while (!newConnections.isEmpty) {
+    while (!newConnections.isEmpty) { // 遍历newConnections队列
       val channel = newConnections.poll()
       try {
         debug(s"Processor $id listening to new connection from ${channel.socket.getRemoteSocketAddress}")
