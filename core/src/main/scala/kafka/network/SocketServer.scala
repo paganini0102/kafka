@@ -51,7 +51,10 @@ import scala.util.control.ControlThrowable
  *   M Handler threads that handle requests and produce responses back to the processor threads for writing.
  */
 class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time, val credentialProvider: CredentialProvider) extends Logging with KafkaMetricsGroup {
-  /** Endpoint集合。一般的服务器都有多块网卡，可以配置多个IP，Kafka可以同时监听多个端口。Endpoint类中封装了需要监听的host、port及使用的网络协议。每个Endpoint都会创建一个对应的Acceptor对象 */
+  /** Endpoint集合。一般的服务器都有多块网卡，可以配置多个IP，Kafka可以同时监听多个端口。
+   *  Endpoint类中封装了需要监听的host、port及使用的网络协议。
+   *  每个Endpoint都会创建一个对应的Acceptor对象 
+   */
   private val endpoints = config.listeners.map(l => l.listenerName -> l).toMap
   /** Processor线程的个数 */
   private val numProcessorThreads = config.numNetworkThreads
@@ -282,12 +285,13 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
                               brokerId: Int,
                               processors: Array[Processor],
                               connectionQuotas: ConnectionQuotas) extends AbstractServerThread(connectionQuotas) with KafkaMetricsGroup {
-
+  // 创建NioSelector
   private val nioSelector = NSelector.open()
-  // 开启Socket服务
+  // 创建ServerSocketChannel
   val serverChannel = openServerSocket(endPoint.host, endPoint.port)
 
   this.synchronized {
+    // 为对应的每个Processor都创建对应的线程并启动
     processors.foreach { processor =>
       KafkaThread.nonDaemon(s"kafka-network-thread-$brokerId-${endPoint.listenerName}-${endPoint.securityProtocol}-${processor.id}",
         processor).start()
@@ -298,7 +302,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
    * Accept loop that checks for new connection attempts
    */
   def run() {
-    // 注册Accept事件
+    // 注册监听OP_ACCEPT事件
     serverChannel.register(nioSelector, SelectionKey.OP_ACCEPT)
     startupComplete()
     try {
@@ -306,7 +310,8 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
       // 监听Accept事件
       while (isRunning) {
         try {
-          val ready = nioSelector.select(500)
+          // 等待关注的事件
+          val ready = nioSelector.select(500) 
           if (ready > 0) {
             val keys = nioSelector.selectedKeys()
             val iter = keys.iterator()
@@ -314,9 +319,10 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
               try {
                 val key = iter.next
                 iter.remove()
+                // 调用accept()方法处理OP_ACCEPT事件
                 if (key.isAcceptable)
                   accept(key, processors(currentProcessor))
-                else
+                else //如果不是OP_ACCEPT事件，则报错
                   throw new IllegalStateException("Unrecognized key state for acceptor thread.")
 
                 // round robin to the next processor thread
@@ -372,9 +378,13 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
    */
   def accept(key: SelectionKey, processor: Processor) {
     val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]
+    // 创建SocketChannel
     val socketChannel = serverSocketChannel.accept()
     try {
+      // 增加ConnectionQuotas中记录的连接数
       connectionQuotas.inc(socketChannel.socket().getInetAddress)
+      
+      // 配置SocketChannel的相关属性，当前SocketChannel为非阻塞模式、sendBufferSize、keepalive等
       socketChannel.configureBlocking(false)
       socketChannel.socket().setTcpNoDelay(true)
       socketChannel.socket().setKeepAlive(true)
@@ -386,7 +396,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
                   socketChannel.socket.getSendBufferSize, sendBufferSize,
                   socketChannel.socket.getReceiveBufferSize, recvBufferSize))
 
-      processor.accept(socketChannel)
+      processor.accept(socketChannel) // 将SocketChannel交给Processprs处理
     } catch {
       case e: TooManyConnectionsException =>
         info("Rejected connection from %s, address already has the configured maximum of %d connections.".format(e.ip, e.count))
@@ -479,8 +489,10 @@ private[kafka] class Processor(val id: Int,
     try {
       while (isRunning) {
         try {
+          // 针对新的连接，注册其上的OP_READ事件
           // setup any new connections that have been queued up
           configureNewConnections()
+          // 从RequestChannel获取响应产生OP_WRITE事件
           // register any new responses for writing
           processNewResponses()
           poll()
