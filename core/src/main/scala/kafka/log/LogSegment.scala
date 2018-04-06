@@ -48,11 +48,11 @@ import scala.math._
  * @param time The time instance
  */
 @nonthreadsafe
-class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一个Offset，这是针对Partition中的偏移量
-                 val index: OffsetIndex, // 用于操作对应Offset索引文件的OffsetIndex对象
+class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一个offset，这是针对Partition中的偏移量
+                 val index: OffsetIndex, // 用于操作对应offset索引文件的OffsetIndex对象
                  val timeIndex: TimeIndex, // 用于操作对应时间索引文件的TimeIndex对象
                  val txnIndex: TransactionIndex,
-                 val baseOffset: Long, // 每一个日志文件的第一个消息的Offset
+                 val baseOffset: Long, // 每一个日志文件的第一个消息的offset
                  val indexIntervalBytes: Int, // 索引项之间间隔的最小字节数，也就是隔多少字节写一次索引
                  val rollJitterMs: Long,
                  time: Time) extends Logging {
