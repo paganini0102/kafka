@@ -48,25 +48,29 @@ import scala.math._
  * @param time The time instance
  */
 @nonthreadsafe
-class LogSegment(val log: FileRecords,
-                 val index: OffsetIndex,
-                 val timeIndex: TimeIndex,
+class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一个Offset，这是针对Partition中的偏移量
+                 val index: OffsetIndex, // 用于操作对应Offset索引文件的OffsetIndex对象
+                 val timeIndex: TimeIndex, // 用于操作对应时间索引文件的TimeIndex对象
                  val txnIndex: TransactionIndex,
-                 val baseOffset: Long,
-                 val indexIntervalBytes: Int,
+                 val baseOffset: Long, // 每一个日志文件的第一个消息的Offset
+                 val indexIntervalBytes: Int, // 索引项之间间隔的最小字节数，也就是隔多少字节写一次索引
                  val rollJitterMs: Long,
                  time: Time) extends Logging {
 
   private var created = time.milliseconds
 
+  /** 自上次添加index entry后在日志文件中累计加入的message set的字节数，用于判断下一次索引添加的时机 */
   /* the number of bytes since we last added an entry in the offset index */
   private var bytesSinceLastIndexEntry = 0
 
+  /** 用于基于时间的日志滚动的时间戳 */
   /* The timestamp we used for time based log rolling */
   private var rollingBasedTimestamp: Option[Long] = None
 
+  /** 目前为止最大的时间，也就是timeIndex文件最后一个entry的时间戳 */
   /* The maximum timestamp we see so far */
   @volatile private var maxTimestampSoFar: Long = timeIndex.lastEntry.timestamp
+  /** timeIndex文件最后一个entry的对应的offset */
   @volatile private var offsetOfMaxTimestamp: Long = timeIndex.lastEntry.offset
 
   def this(dir: File, startOffset: Long, indexIntervalBytes: Int, maxIndexSize: Int, rollJitterMs: Long, time: Time,
