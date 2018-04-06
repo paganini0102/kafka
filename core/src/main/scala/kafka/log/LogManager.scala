@@ -47,19 +47,19 @@ import scala.collection.mutable.ArrayBuffer
  * A background thread handles log retention by periodically truncating excess log segments.
  */
 @threadsafe
-class LogManager(logDirs: Seq[File],
+class LogManager(logDirs: Seq[File], // 日志目录
                  initialOfflineDirs: Seq[File],
                  val topicConfigs: Map[String, LogConfig], // note that this doesn't get updated after creation
                  val defaultConfig: LogConfig,
                  val cleanerConfig: CleanerConfig,
-                 ioThreads: Int,
-                 val flushCheckMs: Long,
+                 ioThreads: Int, // 线程
+                 val flushCheckMs: Long, // flush检查时间
                  val flushRecoveryOffsetCheckpointMs: Long,
                  val flushStartOffsetCheckpointMs: Long,
-                 val retentionCheckMs: Long,
+                 val retentionCheckMs: Long, // 日志保留检查时间
                  val maxPidExpirationMs: Int,
-                 scheduler: Scheduler,
-                 val brokerState: BrokerState,
+                 scheduler: Scheduler, // KafkaScheduler调度器，用于调度线程
+                 val brokerState: BrokerState, // broker状态
                  brokerTopicStats: BrokerTopicStats,
                  logDirFailureChannel: LogDirFailureChannel,
                  time: Time) extends Logging with KafkaMetricsGroup {
@@ -69,6 +69,7 @@ class LogManager(logDirs: Seq[File],
   val LockFile = ".lock"
   val InitialTaskDelayMs = 30 * 1000
 
+  /** 创建或者删除Log时需要加锁进行同步 */
   private val logCreationOrDeletionLock = new Object
   private val currentLogs = new Pool[TopicPartition, Log]()
   // Future logs are put in the directory with "-future" suffix. Future log is created when user wants to move replica
@@ -811,6 +812,7 @@ class LogManager(logDirs: Seq[File],
   }
 
   /**
+   * 清理日志
    * Delete any eligible logs. Return the number of segments deleted.
    * Only consider logs that are not compacted.
    */
@@ -856,16 +858,20 @@ class LogManager(logDirs: Seq[File],
   }
 
   /**
+   * 刷新日志的源码
    * Flush any log which has exceeded its flush interval and has unwritten messages.
    */
   private def flushDirtyLogs(): Unit = {
     debug("Checking for dirty logs to flush...")
 
+    // 遍历(topicAndPartition, log)
     for ((topicPartition, log) <- currentLogs.toList ++ futureLogs.toList) {
       try {
+        // 获取现在距离上次日志刷新的时间
         val timeSinceLastFlush = time.milliseconds - log.lastFlushTime
         debug("Checking if flush is needed on " + topicPartition.topic + " flush interval  " + log.config.flushMs +
               " last flushed " + log.lastFlushTime + " time since last flush: " + timeSinceLastFlush)
+        // 如果到期，则开始刷新日志，调用的是Log#flush方法
         if(timeSinceLastFlush >= log.config.flushMs)
           log.flush
       } catch {

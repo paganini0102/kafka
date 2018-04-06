@@ -192,6 +192,7 @@ class Log(@volatile var dir: File,
    */
   @volatile private var replicaHighWatermark: Option[Long] = None
 
+  /** 日志包含多个日志分段 */
   /* the actual segments of the log */
   private val segments: ConcurrentNavigableMap[java.lang.Long, LogSegment] = new ConcurrentSkipListMap[java.lang.Long, LogSegment]
 
@@ -1228,10 +1229,14 @@ class Log(@volatile var dir: File,
    * or because the log size is > retentionSize
    */
   def deleteOldSegments(): Int = {
+    // 如果日志清理策略时删除，才会删除，如果是合并，则直接返回
     if (!config.delete) return 0
     deleteRetentionMsBreachedSegments() + deleteRetentionSizeBreachedSegments() + deleteLogStartOffsetBreachedSegments()
   }
 
+  /**
+   * 删除超过最长存活时间的segments，也就是过期的segment
+   */
   private def deleteRetentionMsBreachedSegments(): Int = {
     if (config.retentionMs < 0) return 0
     val startMs = time.milliseconds
@@ -1239,6 +1244,9 @@ class Log(@volatile var dir: File,
       reason = s"retention time ${config.retentionMs}ms breach")
   }
 
+  /**
+   * 根据log的大小决定是否删除最旧的segment
+   */
   private def deleteRetentionSizeBreachedSegments(): Int = {
     if (config.retentionSize < 0 || size < config.retentionSize) return 0
     var diff = size - config.retentionSize

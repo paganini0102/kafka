@@ -273,6 +273,9 @@ class RequestChannel(val numProcessors: Int, val queueSize: Int) extends KafkaMe
   }
 
   /** Send a response back to the socket server to be sent over the network */
+  /**
+   * 向对应responseQueue队列中添加SendAction类型的Response
+   */
   def sendResponse(response: RequestChannel.Response) {
     if (isTraceEnabled) {
       val requestHeader = response.request.header
