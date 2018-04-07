@@ -242,7 +242,7 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
             mapping.position
         min(min(maxPosition, endPosition) - startPosition, adjustedMaxSize).toInt
     }
-
+    // 通过FileMessageSet提供的指定物理偏移量和长度的read方法读取相应的数据
     FetchDataInfo(offsetMetadata, log.read(startPosition, fetchSize),
       firstEntryIncomplete = adjustedMaxSize < startOffsetAndSize.size)
   }
