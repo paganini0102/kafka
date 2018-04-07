@@ -116,11 +116,13 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
     if (records.sizeInBytes > 0) {
       trace("Inserting %d bytes at offset %d at position %d with largest timestamp %d at shallow offset %d"
           .format(records.sizeInBytes, firstOffset, log.sizeInBytes(), largestTimestamp, shallowOffsetOfMaxTimestamp))
+      // 获取log现在的物理位置
       val physicalPosition = log.sizeInBytes()
       if (physicalPosition == 0)
         rollingBasedTimestamp = Some(largestTimestamp)
       // append the messages
       require(canConvertToRelativeOffset(largestOffset), "largest offset in message set can not be safely converted to relative offset.")
+      // 调用Log#append()添加消息，还是先写入内存的
       val appendedBytes = log.append(records)
       trace(s"Appended $appendedBytes to ${log.file()} at offset $firstOffset")
       // Update the in memory max timestamp and corresponding offset.
@@ -174,7 +176,9 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
    */
   @threadsafe
   private[log] def translateOffset(offset: Long, startingFilePosition: Int = 0): LogOffsetPosition = {
+    // 通过index索引信息定位到小于等于startOffset的最近记录位置，利用的是二分查找算法
     val mapping = index.lookup(offset)
+    // 从小于等于startOffset的最近记录位置开始往后读取数据，直到读取到偏移量为startOffset的消息
     log.searchForOffsetWithSize(offset, max(mapping.position, startingFilePosition))
   }
 
@@ -198,6 +202,7 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
       throw new IllegalArgumentException("Invalid max size for log read (%d)".format(maxSize))
 
     val logSize = log.sizeInBytes // this may change, need to save a consistent copy
+    // 通过startOffset找到位于log中具体的物理位置，以字节为单位
     val startOffsetAndSize = translateOffset(startOffset)
 
     // if the start position is already off the end of the log, return null
@@ -205,8 +210,10 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
       return null
 
     val startPosition = startOffsetAndSize.position
+    // 组装offset元数据信息
     val offsetMetadata = new LogOffsetMetadata(startOffset, this.baseOffset, startPosition)
 
+    // 如果设置了maxOffset，则根据其具体值计算实际需要读取的字节数 
     val adjustedMaxSize =
       if (minOneMessage) math.max(maxSize, startOffsetAndSize.size)
       else maxSize

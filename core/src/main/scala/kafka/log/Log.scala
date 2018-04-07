@@ -991,6 +991,7 @@ class Log(@volatile var dir: File,
       // We create the local variables to avoid race conditions with updates to the log.
       val currentNextOffsetMetadata = nextOffsetMetadata
       val next = currentNextOffsetMetadata.messageOffset
+      // 如果是当前最新的offset，则无数据读取
       if (startOffset == next) {
         val abortedTransactions =
           if (isolationLevel == IsolationLevel.READ_COMMITTED) Some(List.empty[AbortedTransaction])
@@ -999,6 +1000,7 @@ class Log(@volatile var dir: File,
           abortedTransactions = abortedTransactions)
       }
 
+      // 根据startOffset定位位于那个LogSegment
       var segmentEntry = segments.floorEntry(startOffset)
 
       // return error on attempt to read beyond the log end offset or read below log start offset
