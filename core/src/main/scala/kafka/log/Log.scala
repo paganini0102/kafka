@@ -273,6 +273,7 @@ class Log(@volatile var dir: File,
       if (!file.canRead)
         throw new IOException("Could not read file " + file)
       val filename = file.getName
+      // .delete或者.cleaned后缀的直接删除该文件
       if (filename.endsWith(DeletedFileSuffix) || filename.endsWith(CleanedFileSuffix)) {
         // if the file ends in .deleted or .cleaned, delete it
         Files.deleteIfExists(file.toPath)
@@ -280,10 +281,11 @@ class Log(@volatile var dir: File,
         // we crashed in the middle of a swap operation, to recover:
         // if a log, delete the .index file, complete the swap operation later
         // if an index just delete it, it will be rebuilt
+        // .swap后缀的先去掉该.swap后缀，然后判断是偏移量索引文件(.index)还是日志文件(.log)
         val baseFile = new File(CoreUtils.replaceSuffix(file.getPath, SwapFileSuffix, ""))
-        if (isIndexFile(baseFile)) {
+        if (isIndexFile(baseFile)) { // 如果是偏移量索引文件则直接删除该文件
           Files.deleteIfExists(file.toPath)
-        } else if (isLogFile(baseFile)) {
+        } else if (isLogFile(baseFile)) { // 如果是日志文件则删除该日志文件，然后将该文件添加到swapFiles集合中
           // delete the index files
           val offset = offsetFromFile(baseFile)
           Files.deleteIfExists(Log.offsetIndexFile(dir, offset).toPath)
@@ -403,6 +405,10 @@ class Log(@volatile var dir: File,
 
   // Load the log segments from the log files on disk and return the next offset
   // This method does not need to convert IOException to KafkaStorageException because it is only called before all logs are loaded
+  /**
+   * 1、检查分区目录是否存在，若不存在则创建
+   * 2、遍历分区目录下的文件，根据文件后缀名分别进行不同的处理。
+   */
   private def loadSegments(): Long = {
     // first do a pass through the files in the log directory and remove any temporary files
     // and find any interrupted swap operations

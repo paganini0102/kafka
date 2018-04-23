@@ -50,11 +50,11 @@ import scala.collection.mutable.ArrayBuffer
 class LogManager(logDirs: Seq[File], // 日志目录
                  initialOfflineDirs: Seq[File],
                  val topicConfigs: Map[String, LogConfig], // note that this doesn't get updated after creation
-                 val defaultConfig: LogConfig,
-                 val cleanerConfig: CleanerConfig,
-                 ioThreads: Int, // 线程
+                 val defaultConfig: LogConfig, // 默认配置信息
+                 val cleanerConfig: CleanerConfig, // 日志压缩相关的配置信息
+                 ioThreads: Int, // 线程数
                  val flushCheckMs: Long, // flush检查时间
-                 val flushRecoveryOffsetCheckpointMs: Long, // 
+                 val flushRecoveryOffsetCheckpointMs: Long, 
                  val flushStartOffsetCheckpointMs: Long,
                  val retentionCheckMs: Long, // 日志保留检查时间
                  val maxPidExpirationMs: Int,
