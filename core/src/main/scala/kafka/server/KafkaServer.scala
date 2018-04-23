@@ -229,6 +229,7 @@ class KafkaServer(val config: KafkaConfig, time: Time = Time.SYSTEM, threadNameP
         _zkClient = new KafkaZkClient(zooKeeperClient, zkUtils.isSecure, time)
 
         /* start log manager */
+        /** 日志管理器 */
         logManager = LogManager(config, initialOfflineDirs, zkClient, brokerState, kafkaScheduler, time, brokerTopicStats, logDirFailureChannel)
         logManager.startup()
 

@@ -54,7 +54,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
                  val cleanerConfig: CleanerConfig,
                  ioThreads: Int, // 线程
                  val flushCheckMs: Long, // flush检查时间
-                 val flushRecoveryOffsetCheckpointMs: Long,
+                 val flushRecoveryOffsetCheckpointMs: Long, // 
                  val flushStartOffsetCheckpointMs: Long,
                  val retentionCheckMs: Long, // 日志保留检查时间
                  val maxPidExpirationMs: Int,

@@ -1161,13 +1161,13 @@ class KafkaApis(val requestChannel: RequestChannel,
   }
 
   /**
-   * KafkaApis处理每个消费者发送的“加入组请求”
+   * KafkaApis处理每个消费者发送的加入组请求
    */
   def handleJoinGroupRequest(request: RequestChannel.Request) {
     val joinGroupRequest = request.body[JoinGroupRequest]
 
     // the callback for sending a join-group response
-    // 首先定义“发送加入组响应结果”的回调方法
+    // 定义发送加入组响应结果的回调方法
     def sendResponseCallback(joinResult: JoinGroupResult) {
       val members = joinResult.members map { case (memberId, metadataArray) => (memberId, ByteBuffer.wrap(metadataArray)) }
       def createResponse(requestThrottleMs: Int): AbstractResponse = {
@@ -1218,11 +1218,11 @@ class KafkaApis(val requestChannel: RequestChannel,
   }
 
   /**
-   * KafkaApis处理每个消费者发送的“同步组请求”
+   * KafkaApis处理每个消费者发送的同步组请求
    */
   def handleSyncGroupRequest(request: RequestChannel.Request) {
     val syncGroupRequest = request.body[SyncGroupRequest]
-    // 首先定义“发送同步组响应结果”的回调方法
+    // 首先定义发送同步组响应结果的回调方法
     def sendResponseCallback(memberState: Array[Byte], error: Errors) {
       sendResponseMaybeThrottle(request, requestThrottleMs =>
         new SyncGroupResponse(requestThrottleMs, error, ByteBuffer.wrap(memberState)))
