@@ -77,7 +77,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
   // to replace the current log of the partition after the future log catches up with the current log
   private val futureLogs = new Pool[TopicPartition, Log]()
   private val logsToBeDeleted = new LinkedBlockingQueue[Log]()
-
+  /** 创建和验证日志目录的有效性 */
   private val _liveLogDirs: ConcurrentLinkedQueue[File] = createAndValidateLogDirs(logDirs, initialOfflineDirs)
 
   def liveLogDirs: Seq[File] = {
@@ -87,7 +87,9 @@ class LogManager(logDirs: Seq[File], // 日志目录
       _liveLogDirs.asScala.toBuffer
   }
 
+  /** 使用文件锁锁定目录 */
   private val dirLocks = lockLogDirs(liveLogDirs)
+  /** 创建recovery-point0offset-checkpoint文件（用来记录每个主题的每个分区下一次写入磁盘数据的偏移量，即小于该偏移量的数据已写入磁盘） */
   @volatile private var recoveryPointCheckpoints = liveLogDirs.map(dir =>
     (dir, new OffsetCheckpointFile(new File(dir, RecoveryPointCheckpointFile), logDirFailureChannel))).toMap
   @volatile private var logStartOffsetCheckpoints = liveLogDirs.map(dir =>
@@ -100,7 +102,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     _liveLogDirs.asScala.foreach(logDirsSet -=)
     logDirsSet
   }
-
+  /** 修复并且加载日志目录中的日志文件，针对每个日志目录分别处理 */
   loadLogs()
 
   // public, so we can access this from kafka.admin.DeleteTopicTest
@@ -145,13 +147,14 @@ class LogManager(logDirs: Seq[File], // 日志目录
       try {
         if (initialOfflineDirs.contains(dir))
           throw new IOException(s"Failed to load ${dir.getAbsolutePath} during broker startup")
-
+        // 日志目录是否已经存在
         if (!dir.exists) {
           info("Log directory '" + dir.getAbsolutePath + "' not found, creating it.")
           val created = dir.mkdirs()
           if (!created)
             throw new IOException("Failed to create data directory " + dir.getAbsolutePath)
         }
+        // 目录是否可读
         if (!dir.isDirectory || !dir.canRead)
           throw new IOException(dir.getAbsolutePath + " is not a readable log directory.")
         liveLogDirs.add(dir)
