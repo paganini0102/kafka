@@ -78,6 +78,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
   private val futureLogs = new Pool[TopicPartition, Log]()
   private val logsToBeDeleted = new LinkedBlockingQueue[Log]()
 
+  // 创建有效的log目录  
   private val _liveLogDirs: ConcurrentLinkedQueue[File] = createAndValidateLogDirs(logDirs, initialOfflineDirs)
 
   def liveLogDirs: Seq[File] = {
@@ -86,7 +87,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     else
       _liveLogDirs.asScala.toBuffer
   }
-
+  // 创建的时候加锁保证一致性  
   private val dirLocks = lockLogDirs(liveLogDirs)
   @volatile private var recoveryPointCheckpoints = liveLogDirs.map(dir =>
     (dir, new OffsetCheckpointFile(new File(dir, RecoveryPointCheckpointFile), logDirFailureChannel))).toMap
@@ -101,6 +102,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     logDirsSet
   }
 
+  // 恢复并且载入所给定目录的log对象，如果有子目录，子目录中的文件就是Segment
   loadLogs()
 
   // public, so we can access this from kafka.admin.DeleteTopicTest
@@ -280,7 +282,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     val offlineDirs = mutable.Set.empty[(String, IOException)]
     val jobs = mutable.Map.empty[File, Seq[Future[_]]]
 
-    for (dir <- liveLogDirs) {
+    for (dir <- liveLogDirs) { // 将每个子目录load成log，子目录中的文件就是segment文  
       try {
         val pool = Executors.newFixedThreadPool(ioThreads)
         threadPools.append(pool)
@@ -373,7 +375,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
                          period = retentionCheckMs,
                          TimeUnit.MILLISECONDS)
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
-      // flush脏数据
+      // 刷新脏数据
       scheduler.schedule("kafka-log-flusher",
                          flushDirtyLogs _,
                          delay = InitialTaskDelayMs,

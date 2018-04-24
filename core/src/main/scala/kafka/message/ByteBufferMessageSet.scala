@@ -38,7 +38,7 @@ object ByteBufferMessageSet {
       val builder = MemoryRecords.builder(buffer, messages.head.magic, CompressionType.forId(compressionCodec.codec),
         timestampType, offsetAssigner.baseOffset)
 
-      for (message <- messages)
+      for (message <- messages) // 将每条消息写入到字节缓冲区中
         builder.appendWithOffset(offsetAssigner.nextAbsoluteOffset(), message.asRecord)
 
       builder.build().buffer
