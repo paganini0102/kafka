@@ -192,7 +192,7 @@ class Log(@volatile var dir: File,
    */
   @volatile private var replicaHighWatermark: Option[Long] = None
 
-  /** 日志包含多个日志分段 */
+  /** 日志包含多个日志分段，数据结构的key是日志分段的基准偏移量 */
   /* the actual segments of the log */
   private val segments: ConcurrentNavigableMap[java.lang.Long, LogSegment] = new ConcurrentSkipListMap[java.lang.Long, LogSegment]
 
@@ -414,6 +414,7 @@ class Log(@volatile var dir: File,
     // and find any interrupted swap operations
     val swapFiles = removeTempFilesAndCollectSwapFiles()
 
+    // 加载所有的日志分段，通常发生在代理节点重启时
     // now do a second pass and load all the log and index files
     loadSegmentFiles()
 
@@ -658,6 +659,7 @@ class Log(@volatile var dir: File,
    */
   private def append(records: MemoryRecords, isFromClient: Boolean, assignOffsets: Boolean, leaderEpoch: Int): LogAppendInfo = {
     maybeHandleIOException(s"Error while appending records to $topicPartition in dir ${dir.getParent}") {
+      // LogAppendInfo对象，代表这批消息的概要信息，然后对消息集进行验证
       val appendInfo = analyzeAndValidateRecords(records, isFromClient = isFromClient)
 
       // return if we have no valid messages or if this is a duplicate of the last appended entry
@@ -665,13 +667,15 @@ class Log(@volatile var dir: File,
         return appendInfo
 
       // trim any invalid bytes or partial messages before appending it to the on-disk log
+      // 获取最新的下一个偏移量作为第一条消息的绝对偏移量
       var validRecords = trimInvalidBytes(records, appendInfo)
 
       // they are valid, insert them in the log
       lock synchronized {
         checkIfMemoryMappedBufferClosed()
-        if (assignOffsets) {
+        if (assignOffsets) { // 每条消息的偏移量都是递增的
           // assign offsets to the message set
+          // 起始偏移量来自最新的下一个偏移量，不是消息自带的相对偏移量
           val offset = new LongRef(nextOffsetMetadata.messageOffset)
           appendInfo.firstOffset = offset.value
           val now = time.milliseconds
@@ -743,6 +747,7 @@ class Log(@volatile var dir: File,
         }
 
         // maybe roll the log if this segment is full
+        // 可能需要滚动创建分段
         val segment = maybeRoll(messagesSize = validRecords.sizeInBytes,
           maxTimestampInMessages = appendInfo.maxTimestamp,
           maxOffsetInMessages = appendInfo.lastOffset)
@@ -752,6 +757,7 @@ class Log(@volatile var dir: File,
           segmentBaseOffset = segment.baseOffset,
           relativePositionInSegment = segment.size)
 
+        // 追加消息到当前分段
         segment.append(firstOffset = appendInfo.firstOffset,
           largestOffset = appendInfo.lastOffset,
           largestTimestamp = appendInfo.maxTimestamp,
@@ -776,6 +782,7 @@ class Log(@volatile var dir: File,
         producerStateManager.updateMapEndOffset(appendInfo.lastOffset + 1)
 
         // increment the log end offset
+        // 修改最新的下一个偏移量
         updateLogEndOffset(appendInfo.lastOffset + 1)
 
         // update the first unstable offset (which is used to compute LSO)
@@ -785,7 +792,7 @@ class Log(@volatile var dir: File,
           .format(this.name, appendInfo.firstOffset, nextOffsetMetadata.messageOffset, validRecords))
 
         if (unflushedMessages >= config.flushInterval)
-          flush()
+          flush() // 刷写磁盘
 
         appendInfo
       }
