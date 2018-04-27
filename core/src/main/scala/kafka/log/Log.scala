@@ -156,6 +156,7 @@ class Log(@volatile var dir: File,
   @volatile private var isMemoryMappedBufferClosed = false
 
   /* last time it was flushed */
+  /** 最后log刷新到磁盘的时间，这个变量贯穿整个管理过程 */
   private val lastFlushedTime = new AtomicLong(time.milliseconds)
 
   def initFileSize: Int = {

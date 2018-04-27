@@ -77,6 +77,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
   // to replace the current log of the partition after the future log catches up with the current log
   private val futureLogs = new Pool[TopicPartition, Log]()
   private val logsToBeDeleted = new LinkedBlockingQueue[Log]()
+
   /** 创建和验证日志目录的有效性 */
   private val _liveLogDirs: ConcurrentLinkedQueue[File] = createAndValidateLogDirs(logDirs, initialOfflineDirs)
 
@@ -86,8 +87,8 @@ class LogManager(logDirs: Seq[File], // 日志目录
     else
       _liveLogDirs.asScala.toBuffer
   }
-
-  /** 使用文件锁锁定目录 */
+  
+  /** 创建的时候加锁保证一致性   */
   private val dirLocks = lockLogDirs(liveLogDirs)
   /** 创建recovery-point0offset-checkpoint文件（用来记录每个主题的每个分区下一次写入磁盘数据的偏移量，即小于该偏移量的数据已写入磁盘） */
   @volatile private var recoveryPointCheckpoints = liveLogDirs.map(dir =>
@@ -102,6 +103,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     _liveLogDirs.asScala.foreach(logDirsSet -=)
     logDirsSet
   }
+  
   /** 修复并且加载日志目录中的日志文件，针对每个日志目录分别处理 */
   loadLogs()
 
@@ -283,7 +285,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
     val offlineDirs = mutable.Set.empty[(String, IOException)]
     val jobs = mutable.Map.empty[File, Seq[Future[_]]]
 
-    for (dir <- liveLogDirs) {
+    for (dir <- liveLogDirs) { // 将每个子目录load成log，子目录中的文件就是segment文  
       try {
         val pool = Executors.newFixedThreadPool(ioThreads)
         threadPools.append(pool)
@@ -376,7 +378,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
                          period = retentionCheckMs,
                          TimeUnit.MILLISECONDS)
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
-      // flush脏数据
+      // 刷新脏数据
       scheduler.schedule("kafka-log-flusher",
                          flushDirtyLogs _,
                          delay = InitialTaskDelayMs,
