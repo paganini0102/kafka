@@ -134,10 +134,10 @@ case class CompletedTxn(producerId: Long, firstOffset: Long, lastOffset: Long, i
  * @param producerIdExpirationCheckIntervalMs How often to check for producer ids which need to be expired
  */
 @threadsafe
-class Log(@volatile var dir: File,
-          @volatile var config: LogConfig,
-          @volatile var logStartOffset: Long,
-          @volatile var recoveryPoint: Long,
+class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存放的每个LogSegment对应的日志文件和索引文件
+          @volatile var config: LogConfig, // Log相关的配置信息
+          @volatile var logStartOffset: Long, 
+          @volatile var recoveryPoint: Long, // 指定恢复操作的起始offset
           scheduler: Scheduler,
           brokerTopicStats: BrokerTopicStats,
           time: Time,
