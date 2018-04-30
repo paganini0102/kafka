@@ -662,7 +662,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
    */
   private def append(records: MemoryRecords, isFromClient: Boolean, assignOffsets: Boolean, leaderEpoch: Int): LogAppendInfo = {
     maybeHandleIOException(s"Error while appending records to $topicPartition in dir ${dir.getParent}") {
-      // LogAppendInfo对象，代表这批消息的概要信息，然后对消息集进行验证
+      // 对消息集长度和CRC32进行验证，返回LogAppendInfo对象
       val appendInfo = analyzeAndValidateRecords(records, isFromClient = isFromClient)
 
       // return if we have no valid messages or if this is a duplicate of the last appended entry
@@ -674,15 +674,17 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
       var validRecords = trimInvalidBytes(records, appendInfo)
 
       // they are valid, insert them in the log
-      lock synchronized {
+      lock synchronized { // 加锁
         checkIfMemoryMappedBufferClosed()
-        if (assignOffsets) { // 每条消息的偏移量都是递增的
+        if (assignOffsets) { // 判断是否需要分配offset，默认需要
           // assign offsets to the message set
-          // 起始偏移量来自最新的下一个偏移量，不是消息自带的相对偏移量
+          // 获取nextOffsetMetadata记录的messageOffset字段，从此值开始向后分配offset
           val offset = new LongRef(nextOffsetMetadata.messageOffset)
+          // 使用firstOffset字段记录第一条消息的offset，并不受压缩消息的影响
           appendInfo.firstOffset = offset.value
           val now = time.milliseconds
           val validateAndOffsetAssignResult = try {
+            // 进一步验证，并分配offset
             LogValidator.validateMessagesAndAssignOffsets(validRecords,
               offset,
               time,
@@ -701,10 +703,11 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
           validRecords = validateAndOffsetAssignResult.validatedRecords
           appendInfo.maxTimestamp = validateAndOffsetAssignResult.maxTimestamp
           appendInfo.offsetOfMaxTimestamp = validateAndOffsetAssignResult.shallowOffsetOfMaxTimestamp
+          // lastOffset记录最后一条记录的offset，并不受压缩消息的影响
           appendInfo.lastOffset = offset.value - 1
           appendInfo.recordsProcessingStats = validateAndOffsetAssignResult.recordsProcessingStats
           if (config.messageTimestampType == TimestampType.LOG_APPEND_TIME)
-            appendInfo.logAppendTime = now
+            appendInfo.logAppendTime = now // 修改时间戳
 
           // re-validate message sizes if there's a possibility that they have changed (due to re-compression or message
           // format conversion)
@@ -887,12 +890,12 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
    * </ol>
    */
   private def analyzeAndValidateRecords(records: MemoryRecords, isFromClient: Boolean): LogAppendInfo = {
-    var shallowMessageCount = 0
-    var validBytesCount = 0
-    var firstOffset = -1L
-    var lastOffset = -1L
+    var shallowMessageCount = 0 // 消息数量
+    var validBytesCount = 0 // 有效字节数
+    var firstOffset = -1L // 第一条消息的偏移量
+    var lastOffset = -1L // 最后一条消息的偏移量
     var sourceCodec: CompressionCodec = NoCompressionCodec
-    var monotonic = true
+    var monotonic = true // 是否单调递增
     var maxTimestamp = RecordBatch.NO_TIMESTAMP
     var offsetOfMaxTimestamp = -1L
 
@@ -926,7 +929,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
       }
 
       // check the validity of the message by checking CRC
-      batch.ensureValid()
+      batch.ensureValid() // 校验消息是否有效
 
       if (batch.maxTimestamp > maxTimestamp) {
         maxTimestamp = batch.maxTimestamp
