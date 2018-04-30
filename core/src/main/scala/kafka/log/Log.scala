@@ -138,7 +138,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
           @volatile var config: LogConfig, // Log相关的配置信息
           @volatile var logStartOffset: Long, 
           @volatile var recoveryPoint: Long, // 指定恢复操作的起始offset
-          scheduler: Scheduler,
+          scheduler: Scheduler, // 异步将日志刷到磁盘的定时任务
           brokerTopicStats: BrokerTopicStats,
           time: Time,
           val maxProducerIdExpirationMs: Int,
@@ -150,6 +150,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
   import kafka.log.Log._
 
   /* A lock that guards all modifications to the log */
+  /** 对Log的修改操作需要进行同步 */
   private val lock = new Object
   // The memory mapped buffer for index files of this log will be closed for index files of this log will be closed with either delete() or closeHandlers()
   // After memory mapped buffer is closed, no disk IO operation should be performed for this log
@@ -171,6 +172,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
       throw new KafkaStorageException(s"The memory mapped buffer for log of $topicPartition is already closed")
   }
 
+  /** 产生分配给消息的offset，同时也是当前副本的LEO */
   @volatile private var nextOffsetMetadata: LogOffsetMetadata = _
 
   /* The earliest offset which is part of an incomplete transaction. This is used to compute the
@@ -193,8 +195,8 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
    */
   @volatile private var replicaHighWatermark: Option[Long] = None
 
-  /** 日志包含多个日志分段，数据结构的key是日志分段的基准偏移量 */
   /* the actual segments of the log */
+  /** 日志包含多个日志分段，数据结构的key是日志分段的基准偏移量 */
   private val segments: ConcurrentNavigableMap[java.lang.Long, LogSegment] = new ConcurrentSkipListMap[java.lang.Long, LogSegment]
 
   @volatile private var _leaderEpochCache: LeaderEpochCache = initializeLeaderEpochCache()
