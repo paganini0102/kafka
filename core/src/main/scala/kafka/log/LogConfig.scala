@@ -70,13 +70,13 @@ case class LogConfig(props: java.util.Map[_, _]) extends AbstractConfig(LogConfi
    * Important note: Any configuration parameter that is passed along from KafkaConfig to LogConfig
    * should also go in [[kafka.server.KafkaServer.copyKafkaConfigToLog]].
    */
-  val segmentSize = getInt(LogConfig.SegmentBytesProp)
-  val segmentMs = getLong(LogConfig.SegmentMsProp)
+  val segmentSize = getInt(LogConfig.SegmentBytesProp) // 默认segment的大小 
+  val segmentMs = getLong(LogConfig.SegmentMsProp) // 产生一个新的segment的时间
   val segmentJitterMs = getLong(LogConfig.SegmentJitterMsProp)
   val maxIndexSize = getInt(LogConfig.SegmentIndexBytesProp)
-  val flushInterval = getLong(LogConfig.FlushMessagesProp)
-  val flushMs = getLong(LogConfig.FlushMsProp)
-  val retentionSize = getLong(LogConfig.RetentionBytesProp)
+  val flushInterval = getLong(LogConfig.FlushMessagesProp) // 将日志刷新到磁盘的间隔时间  
+  val flushMs = getLong(LogConfig.FlushMsProp) // 在刷新日志到磁盘之前，日志可以有脏数据的时间
+  val retentionSize = getLong(LogConfig.RetentionBytesProp) // 日志可以使用的近似总字节数  
   val retentionMs = getLong(LogConfig.RetentionMsProp)
   val maxMessageSize = getInt(LogConfig.MaxMessageBytesProp)
   val indexInterval = getInt(LogConfig.IndexIntervalBytesProp)

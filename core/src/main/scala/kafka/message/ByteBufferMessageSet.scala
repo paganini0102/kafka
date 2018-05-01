@@ -27,6 +27,9 @@ import scala.collection.JavaConverters._
 
 object ByteBufferMessageSet {
 
+  /**
+   * 将消息集写到字节缓冲区，并创建一个ByteBufferMessageSet对象
+   */
   private def create(offsetAssigner: OffsetAssigner,
                      compressionCodec: CompressionCodec,
                      timestampType: TimestampType,

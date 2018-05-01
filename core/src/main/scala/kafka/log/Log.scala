@@ -72,8 +72,8 @@ object LogAppendInfo {
  * @param validBytes The number of valid bytes
  * @param offsetsMonotonic Are the offsets in this message set monotonically increasing
  */
-case class LogAppendInfo(var firstOffset: Long,
-                         var lastOffset: Long,
+case class LogAppendInfo(var firstOffset: Long, // 第一条消息的偏移量
+                         var lastOffset: Long, // 最后一条消息的偏移量
                          var maxTimestamp: Long,
                          var offsetOfMaxTimestamp: Long,
                          var logAppendTime: Long,
