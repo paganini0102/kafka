@@ -913,10 +913,12 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         firstOffset = if (batch.magic >= RecordBatch.MAGIC_VALUE_V2) batch.baseOffset else batch.lastOffset
 
       // check that offsets are monotonically increasing
+      // 判断内部offset是否单调递增 
       if (lastOffset >= batch.lastOffset)
         monotonic = false
 
       // update the last offset seen
+      // 没循环一条消息，就更新lastOffset
       lastOffset = batch.lastOffset
 
       // Check if the message sizes are valid.
