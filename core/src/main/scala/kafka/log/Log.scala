@@ -1332,6 +1332,11 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
     val segment = activeSegment
     val now = time.milliseconds
     val reachedRollMs = segment.timeWaitedForRoll(now, maxTimestampInMessages) > config.segmentMs - segment.rollJitterMs
+    /**
+     * 当前的activeSegment日志大小加上这次待追加的消息集大小，超过配置的LogSegment最大的长度
+     * 当前的activeSegment的时效已经超过了配置的LogSegment最大存活时间
+     * 索引文件满了
+     */
     if (segment.size > config.segmentSize - messagesSize ||
         (segment.size > 0 && reachedRollMs) ||
         segment.index.isFull || segment.timeIndex.isFull || !segment.canConvertToRelativeOffset(maxOffsetInMessages)) {
@@ -1349,9 +1354,9 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         base offset was too low to contain the next message.  This edge case is possible when a replica is recovering a
         highly compacted topic from scratch.
        */
-      roll(maxOffsetInMessages - Integer.MAX_VALUE)
+      roll(maxOffsetInMessages - Integer.MAX_VALUE) // 创建新的activeSegment
     } else {
-      segment
+      segment // 不需要创建新的activeSegment，直接返回当前的activeSegment
     }
   }
 
@@ -1366,9 +1371,12 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
       val start = time.nanoseconds
       lock synchronized {
         checkIfMemoryMappedBufferClosed()
-        val newOffset = math.max(expectedNextOffset, logEndOffset)
+        val newOffset = math.max(expectedNextOffset, logEndOffset) // 获取LEO
+        // 新日志文件的文件名{LEO}.log
         val logFile = Log.logFile(dir, newOffset)
+        // 新索引文件的文件名{LEO}.index
         val offsetIdxFile = offsetIndexFile(dir, newOffset)
+        // 新时间索引文件的文件名{LEO}.timeindex
         val timeIdxFile = timeIndexFile(dir, newOffset)
         val txnIdxFile = transactionIndexFile(dir, newOffset)
         for (file <- List(logFile, offsetIdxFile, timeIdxFile, txnIdxFile) if file.exists) {
@@ -1379,6 +1387,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         Option(segments.lastEntry).foreach { entry =>
           val seg = entry.getValue
           seg.onBecomeInactiveSegment()
+          // 对索引文件和日志文件进行截取，保证文件有效字节
           seg.index.trimToValidSize()
           seg.timeIndex.trimToValidSize()
           seg.log.trim()
@@ -1392,6 +1401,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         producerStateManager.updateMapEndOffset(newOffset)
         producerStateManager.takeSnapshot()
 
+        // 新创建LogSegment
         val segment = new LogSegment(dir,
           startOffset = newOffset,
           indexIntervalBytes = config.indexInterval,
@@ -1401,18 +1411,21 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
           fileAlreadyExists = false,
           initFileSize = initFileSize,
           preallocate = config.preallocate)
+        // 将新创建的Segment添加到segments这个跳表中
         val prev = addSegment(segment)
         if (prev != null)
           throw new KafkaException("Trying to roll a new log segment for topic partition %s with start offset %d while it already exists.".format(name, newOffset))
         // We need to update the segment base offset and append position data of the metadata when log rolls.
         // The next offset should not change.
+        // 更新nextOffsetMetadata，这次更新的目标是为了更新其中记录
         updateLogEndOffset(nextOffsetMetadata.messageOffset)
         // schedule an asynchronous flush of the old segment
+        // 执行Log#flush()操作
         scheduler.schedule("flush-log", () => flush(newOffset), delay = 0L)
 
         info("Rolled new log segment for '" + name + "' in %.0f ms.".format((System.nanoTime - start) / (1000.0 * 1000.0)))
-
-        segment
+        
+        segment // 返回新建的activeSegment
       }
     }
   }
