@@ -207,7 +207,9 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
     val nextOffset = loadSegments()
 
     /* Calculate the offset of the next message */
-    nextOffsetMetadata = new LogOffsetMetadata(nextOffset, activeSegment.baseOffset, activeSegment.size)
+    nextOffsetMetadata = new LogOffsetMetadata(nextOffset, // 下一条消息的偏移量
+        activeSegment.baseOffset, // 日志分段的基准偏移量
+        activeSegment.size) // 日志分段的大小
 
     _leaderEpochCache.clearAndFlushLatest(nextOffsetMetadata.messageOffset)
 
@@ -447,6 +449,10 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
     } else 0
   }
 
+  /**
+   * 更新日志最近的偏移量，传入的参数一般是最后一条消息的偏移量加上一
+   * 使用方需要获取日志最近的偏移量时，就不需要再做加一的操作了
+   */
   private def updateLogEndOffset(messageOffset: Long) {
     nextOffsetMetadata = new LogOffsetMetadata(messageOffset, activeSegment.baseOffset, activeSegment.size)
   }
@@ -670,7 +676,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         return appendInfo
 
       // trim any invalid bytes or partial messages before appending it to the on-disk log
-      // 获取最新的下一个偏移量作为第一条消息的绝对偏移量
+      // 删除消息集中无效的消息
       var validRecords = trimInvalidBytes(records, appendInfo)
 
       // they are valid, insert them in the log
@@ -753,7 +759,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
         }
 
         // maybe roll the log if this segment is full
-        // 可能需要滚动创建分段
+        // 获取activeSegment，可能需要滚动创建分段
         val segment = maybeRoll(messagesSize = validRecords.sizeInBytes,
           maxTimestampInMessages = appendInfo.maxTimestamp,
           maxOffsetInMessages = appendInfo.lastOffset)
@@ -1303,6 +1309,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
   def logEndOffsetMetadata: LogOffsetMetadata = nextOffsetMetadata
 
   /**
+   * 下一条消息的偏移量，取自下一个偏移量元数据中的第一个字段值
    * The offset of the next message that will be appended to the log
    */
   def logEndOffset: Long = nextOffsetMetadata.messageOffset
