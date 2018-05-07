@@ -1447,18 +1447,21 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
    */
   def flush(offset: Long) : Unit = {
     maybeHandleIOException(s"Error while flushing log for $topicPartition in dir ${dir.getParent} with offset $offset") {
+      // offset之前的消息已经全部刷新到磁盘，所以不需要刷新
       if (offset <= this.recoveryPoint)
         return
       debug("Flushing log '" + name + " up to offset " + offset + ", last flushed: " + lastFlushTime + " current time: " +
         time.milliseconds + " unflushed = " + unflushedMessages)
+        // Log#logSegments()，方法通过推segments这个跳表的操作，查找到reoverPoint和offset之间的LogSegment对象
       for (segment <- logSegments(this.recoveryPoint, offset))
-        segment.flush()
+        // 调用LogSegment#flush()方法会调用日志文件和索引文件的各自flush()方法，最终会调用操作系统的fsync命令刷新磁盘，保证数据持久性
+        segment.flush() 
 
       lock synchronized {
         checkIfMemoryMappedBufferClosed()
         if (offset > this.recoveryPoint) {
-          this.recoveryPoint = offset
-          lastFlushedTime.set(time.milliseconds)
+          this.recoveryPoint = offset // 后移recoveryPoint
+          lastFlushedTime.set(time.milliseconds) // 修改lastflushedTime
         }
       }
     }
