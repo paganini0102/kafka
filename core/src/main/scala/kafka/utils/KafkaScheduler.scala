@@ -68,6 +68,7 @@ trait Scheduler {
 class KafkaScheduler(val threads: Int, 
                      val threadNamePrefix: String = "kafka-scheduler-", 
                      daemon: Boolean = true) extends Scheduler with Logging {
+  // JDK提供的定时任务线程池实现
   private var executor: ScheduledThreadPoolExecutor = null
   private val schedulerThreadId = new AtomicInteger(0)
 
@@ -76,13 +77,13 @@ class KafkaScheduler(val threads: Int,
     this synchronized {
       if(isStarted)
         throw new IllegalStateException("This scheduler has already been started!")
-      executor = new ScheduledThreadPoolExecutor(threads)
+      executor = new ScheduledThreadPoolExecutor(threads) // 配置线程数
       executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false)
       executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false)
       executor.setThreadFactory(new ThreadFactory() {
                                   def newThread(runnable: Runnable): Thread = 
                                     new KafkaThread(threadNamePrefix + schedulerThreadId.getAndIncrement(), runnable, daemon)
-                                })
+                                }) // 默认产生的都是守护线程
     }
   }
   
@@ -95,7 +96,7 @@ class KafkaScheduler(val threads: Int,
         cachedExecutor.shutdown()
         this.executor = null
       }
-      cachedExecutor.awaitTermination(1, TimeUnit.DAYS)
+      cachedExecutor.awaitTermination(1, TimeUnit.DAYS) // 等待一天
     }
   }
 
@@ -114,9 +115,9 @@ class KafkaScheduler(val threads: Int,
           trace("Completed execution of scheduled task '%s'.".format(name))
         }
       }
-      if(period >= 0)
+      if(period >= 0) // 处理周期性定时任务
         executor.scheduleAtFixedRate(runnable, delay, period, unit)
-      else
+      else // 处理非周期性定时任务
         executor.schedule(runnable, delay, unit)
     }
   }
