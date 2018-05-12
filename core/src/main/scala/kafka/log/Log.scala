@@ -993,6 +993,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
   }
 
   /**
+   * 从指定的起始偏移量读取日志
    * Read messages from the log.
    *
    * @param startOffset The offset to begin reading at
@@ -1016,6 +1017,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
 
       // Because we don't use lock for reading, the synchronization is a little bit tricky.
       // We create the local variables to avoid race conditions with updates to the log.
+      // 将nextOffsetMetadata保存成局部变量
       val currentNextOffsetMetadata = nextOffsetMetadata
       val next = currentNextOffsetMetadata.messageOffset
       // 如果是当前最新的offset，则无数据读取

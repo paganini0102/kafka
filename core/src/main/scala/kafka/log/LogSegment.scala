@@ -382,8 +382,8 @@ class LogSegment(val log: FileRecords, // 消息集合，每条消息都有一�
    */
   @threadsafe
   def flush() {
-    LogFlushStats.logFlushTimer.time {
       log.flush()
+      LogFlushStats.logFlushTimer.time {
       index.flush()
       timeIndex.flush()
       txnIndex.flush()

@@ -66,11 +66,12 @@ class LogManager(logDirs: Seq[File], // 日志目录
 
   import LogManager._
 
-  val LockFile = ".lock"
-  val InitialTaskDelayMs = 30 * 1000
+  val LockFile = ".lock" // 默认的锁文件，kafka不正常关闭的时候可以看见这个文件未被清理，在logdir下
+  val InitialTaskDelayMs = 30 * 1000 // 初始任务时常
 
   /** 创建或者删除Log时需要加锁进行同步 */
   private val logCreationOrDeletionLock = new Object
+  /** currentLogs是后面所有topic对象的总集，之后关于所有log上的操作都是通过currentLogs */
   private val currentLogs = new Pool[TopicPartition, Log]()
   // Future logs are put in the directory with "-future" suffix. Future log is created when user wants to move replica
   // from one log directory to another log directory on the same broker. The directory of the future log will be renamed
@@ -894,7 +895,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
 
 object LogManager {
 
-  val RecoveryPointCheckpointFile = "recovery-point-offset-checkpoint"
+  val RecoveryPointCheckpointFile = "recovery-point-offset-checkpoint" // 默认的检查点文件
   val LogStartOffsetCheckpointFile = "log-start-offset-checkpoint"
   val ProducerIdExpirationCheckIntervalMs = 10 * 60 * 1000
 
