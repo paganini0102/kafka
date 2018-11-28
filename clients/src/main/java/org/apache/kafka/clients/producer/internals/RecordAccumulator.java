@@ -225,7 +225,7 @@ public final class RecordAccumulator {
             	// 需要检测生产者是否已经关闭
                 if (closed)
                     throw new IllegalStateException("Cannot send after the producer is closed.");
-                // 试图添加record到MemoryRecord,如果添加失败，内存可能满了，重置position等和关闭buffer防止继续写入
+                // 试图添加record到MemoryRecord，如果添加失败，内存可能满了，重置position等和关闭buffer防止继续写入
                 RecordAppendResult appendResult = tryAppend(timestamp, key, value, headers, callback, dq);
                 // 如果添加成功
                 if (appendResult != null) {
@@ -278,7 +278,7 @@ public final class RecordAccumulator {
         ProducerBatch last = deque.peekLast();
         // 试图将取出来的最后一个元素添加
         if (last != null) {
-        	 // 调用ProducerBatch.truAppend方法，添加到MemoryRecords的buffer里
+        	 // 调用ProducerBatch.tryAppend方法，添加到MemoryRecords的buffer里
             FutureRecordMetadata future = last.tryAppend(timestamp, key, value, headers, callback, time.milliseconds());
             // 表示MemoryRecord已经放不下了，然后flip将position置为0，当前buffer不可写，返回
             if (future == null)
