@@ -58,6 +58,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   this.logIdent = s"[Controller id=${config.brokerId}] "
 
   private val stateChangeLogger = new StateChangeLogger(config.brokerId, inControllerContext = true, None)
+  /** 控制器上下文数据 */
   val controllerContext = new ControllerContext
 
   // have a separate scheduler for the controller to be able to start and stop independently of the kafka server
@@ -67,19 +68,24 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   // visible for testing
   private[controller] val eventManager = new ControllerEventManager(config.brokerId,
     controllerContext.stats.rateAndTimeMetrics, _ => updateMetrics())
-
+  /** 删除主题的管理器 */
   val topicDeletionManager = new TopicDeletionManager(this, eventManager, zkClient)
   private val brokerRequestBatch = new ControllerBrokerRequestBatch(this, stateChangeLogger)
+  /** 副本状态机 */
   val replicaStateMachine = new ReplicaStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
+  /** 分区状态机 */
   val partitionStateMachine = new PartitionStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
 
   private val controllerChangeHandler = new ControllerChangeHandler(this, eventManager)
   private val brokerChangeHandler = new BrokerChangeHandler(this, eventManager)
   private val topicChangeHandler = new TopicChangeHandler(this, eventManager)
+  /** 删除主题的管理器 */
   private val topicDeletionHandler = new TopicDeletionHandler(this, eventManager)
   private val partitionModificationsHandlers: mutable.Map[String, PartitionModificationsHandler] = mutable.Map.empty
   private val partitionReassignmentHandler = new PartitionReassignmentHandler(this, eventManager)
+  /** 选举最优的副本作为分区的主副本 */
   private val preferredReplicaElectionHandler = new PreferredReplicaElectionHandler(this, eventManager)
+  /** ISR发生变化时的监听器，更新元数据 */
   private val isrChangeNotificationHandler = new IsrChangeNotificationHandler(this, eventManager)
   private val logDirEventNotificationHandler = new LogDirEventNotificationHandler(this, eventManager)
 
