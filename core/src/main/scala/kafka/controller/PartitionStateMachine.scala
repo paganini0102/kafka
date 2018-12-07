@@ -459,9 +459,13 @@ object PartitionLeaderElectionAlgorithms {
 }
 
 sealed trait PartitionLeaderElectionStrategy
+/** 从活着的ISR中选择一个broker作为leader，如果ISR中没有活着的副本，则从assignedReplicas中选择一个副本作为leader，leader选举成功后注册到Zookeeper中，并更新所有的缓存。 */
 case object OfflinePartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
+/** 从可用的ISR中选取第一个作为leader，把当前的ISR作为新的ISR，将重分配的副本集合作为接收LeaderAndIsr请求的副本集合。 */
 case object ReassignPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
+/** 如果从assignedReplicas取出的第一个副本就是分区leader的话，则抛出异常，否则将第一个副本设置为分区leader。 */
 case object PreferredReplicaPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
+/** 将ISR中处于关闭状态的副本从集合中去除掉，返回一个新新的ISR集合，然后选取第一个副本作为leader，然后令当前AR作为接收LeaderAndIsr请求的副本。 */
 case object ControlledShutdownPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
 
 sealed trait PartitionState {
@@ -469,21 +473,33 @@ sealed trait PartitionState {
   def validPreviousStates: Set[PartitionState]
 }
 
+/**
+ * 分区创建之后就处于NewPartition状态。在这个状态中，分区应该已经分配了副本，但是还没有选举出leader和ISR。
+ */
 case object NewPartition extends PartitionState {
   val state: Byte = 0
   val validPreviousStates: Set[PartitionState] = Set(NonExistentPartition)
 }
 
+/**
+ * 一旦分区的leader被推选出来，它就处于OnlinePartition状态。
+ */
 case object OnlinePartition extends PartitionState {
   val state: Byte = 1
   val validPreviousStates: Set[PartitionState] = Set(NewPartition, OnlinePartition, OfflinePartition)
 }
 
+/**
+ * 如果leader选举出来后，leader broker宕机了，那么该分区就处于OfflinePartition状态。
+ */
 case object OfflinePartition extends PartitionState {
   val state: Byte = 2
   val validPreviousStates: Set[PartitionState] = Set(NewPartition, OnlinePartition, OfflinePartition)
 }
 
+/**
+ * 这个状态表示该分区要么没有被创建过或曾经被创建过但后面被删除了。
+ */
 case object NonExistentPartition extends PartitionState {
   val state: Byte = 3
   val validPreviousStates: Set[PartitionState] = Set(OfflinePartition)
