@@ -398,36 +398,57 @@ sealed trait ReplicaState {
   def validPreviousStates: Set[ReplicaState]
 }
 
+/**
+ * 在partition reassignment期间KafkaController创建New replica
+ */
 case object NewReplica extends ReplicaState {
   val state: Byte = 1
   val validPreviousStates: Set[ReplicaState] = Set(NonExistentReplica)
 }
 
+/**
+ * 当一个replica变为一个parition的assingned replicas时其状态变为OnlineReplica，即一个有效的OnlineReplica。
+ */
 case object OnlineReplica extends ReplicaState {
   val state: Byte = 2
   val validPreviousStates: Set[ReplicaState] = Set(NewReplica, OnlineReplica, OfflineReplica, ReplicaDeletionIneligible)
 }
 
+/**
+ * 当一个broker宕机时，上面的replica下线，其状态转变为Onffline。
+ */
 case object OfflineReplica extends ReplicaState {
   val state: Byte = 3
   val validPreviousStates: Set[ReplicaState] = Set(NewReplica, OnlineReplica, OfflineReplica, ReplicaDeletionIneligible)
 }
 
+/**
+ * 当一个replica的删除操作开始时，其状态转变为ReplicaDeletionStarted。
+ */
 case object ReplicaDeletionStarted extends ReplicaState {
   val state: Byte = 4
   val validPreviousStates: Set[ReplicaState] = Set(OfflineReplica)
 }
 
+/**
+ * Replica成功删除后，其状态转变为ReplicaDeletionSuccessful。
+ */
 case object ReplicaDeletionSuccessful extends ReplicaState {
   val state: Byte = 5
   val validPreviousStates: Set[ReplicaState] = Set(ReplicaDeletionStarted)
 }
 
+/**
+ * Replica成功失败后，其状态转变为ReplicaDeletionIneligible。
+ */
 case object ReplicaDeletionIneligible extends ReplicaState {
   val state: Byte = 6
   val validPreviousStates: Set[ReplicaState] = Set(ReplicaDeletionStarted)
 }
 
+/**
+ * Replica成功删除后，从ReplicaDeletionSuccessful状态转变为NonExistentReplica状态。
+ */
 case object NonExistentReplica extends ReplicaState {
   val state: Byte = 7
   val validPreviousStates: Set[ReplicaState] = Set(ReplicaDeletionSuccessful)
