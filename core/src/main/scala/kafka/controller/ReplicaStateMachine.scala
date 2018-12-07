@@ -407,7 +407,7 @@ case object NewReplica extends ReplicaState {
 }
 
 /**
- * 当一个replica变为一个parition的assingned replicas时其状态变为OnlineReplica，即一个有效的OnlineReplica。
+ * 当一个Replica变为一个parition的assingned replicas时其状态变为OnlineReplica，即一个有效的OnlineReplica。
  */
 case object OnlineReplica extends ReplicaState {
   val state: Byte = 2
@@ -423,7 +423,7 @@ case object OfflineReplica extends ReplicaState {
 }
 
 /**
- * 当一个replica的删除操作开始时，其状态转变为ReplicaDeletionStarted。
+ * 当一个Replica的删除操作开始时，其状态转变为ReplicaDeletionStarted。
  */
 case object ReplicaDeletionStarted extends ReplicaState {
   val state: Byte = 4
@@ -431,7 +431,7 @@ case object ReplicaDeletionStarted extends ReplicaState {
 }
 
 /**
- * Replica成功删除后，其状态转变为ReplicaDeletionSuccessful。
+ * Replica删除后，其状态转变为ReplicaDeletionSuccessful。
  */
 case object ReplicaDeletionSuccessful extends ReplicaState {
   val state: Byte = 5
@@ -439,7 +439,7 @@ case object ReplicaDeletionSuccessful extends ReplicaState {
 }
 
 /**
- * Replica成功失败后，其状态转变为ReplicaDeletionIneligible。
+ * Replica失败后，其状态转变为ReplicaDeletionIneligible。
  */
 case object ReplicaDeletionIneligible extends ReplicaState {
   val state: Byte = 6
@@ -447,7 +447,7 @@ case object ReplicaDeletionIneligible extends ReplicaState {
 }
 
 /**
- * Replica成功删除后，从ReplicaDeletionSuccessful状态转变为NonExistentReplica状态。
+ * Replica删除后，从ReplicaDeletionSuccessful状态转变为NonExistentReplica状态。
  */
 case object NonExistentReplica extends ReplicaState {
   val state: Byte = 7
