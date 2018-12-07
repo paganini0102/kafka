@@ -1059,7 +1059,9 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
             segment.size
           }
         }
+        // 调用LogSegment#read()方法读取消息
         val fetchInfo = segment.read(startOffset, maxOffset, maxLength, maxPosition, minOneMessage)
+        // 在此LogSegment中没有读取到数据，则继续读取下一个LogSegment
         if (fetchInfo == null) {
           segmentEntry = segments.higherEntry(segmentEntry.getKey)
         } else {
@@ -1073,6 +1075,7 @@ class Log(@volatile var dir: File, // Log对应的磁盘目录，此目录下存
       // okay we are beyond the end of the last segment with no data fetched although the start offset is in range,
       // this can happen when all messages with offset larger than start offsets have been deleted.
       // In this case, we will return the empty set with log end offset metadata
+      // 查找不到startOffset之后的消息
       FetchDataInfo(nextOffsetMetadata, MemoryRecords.EMPTY)
     }
   }

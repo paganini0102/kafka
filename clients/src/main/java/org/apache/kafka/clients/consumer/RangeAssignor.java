@@ -66,20 +66,22 @@ public class RangeAssignor extends AbstractPartitionAssignor {
         for (Map.Entry<String, List<String>> topicEntry : consumersPerTopic.entrySet()) {
             String topic = topicEntry.getKey();
             List<String> consumersForTopic = topicEntry.getValue();
-
+            // 获取主题分区总数
             Integer numPartitionsForTopic = partitionsPerTopic.get(topic);
             if (numPartitionsForTopic == null)
                 continue;
-
+            // 对线程进行排序
             Collections.sort(consumersForTopic);
-
+            // 每个线程至少平均分配的分区数
             int numPartitionsPerConsumer = numPartitionsForTopic / consumersForTopic.size();
             int consumersWithExtraPartition = numPartitionsForTopic % consumersForTopic.size();
 
             List<TopicPartition> partitions = AbstractPartitionAssignor.partitions(topic, numPartitionsForTopic);
+            // 循环为每个线程分配分区
             for (int i = 0, n = consumersForTopic.size(); i < n; i++) {
                 int start = numPartitionsPerConsumer * i + Math.min(i, consumersWithExtraPartition);
                 int length = numPartitionsPerConsumer + (i + 1 > consumersWithExtraPartition ? 0 : 1);
+                // 若平均分配后多余的分区数m，则循环数n小于m的线程应比平均数多分配一个分区
                 assignment.get(consumersForTopic.get(i)).addAll(partitions.subList(start, start + length));
             }
         }
