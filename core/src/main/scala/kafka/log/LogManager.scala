@@ -91,7 +91,7 @@ class LogManager(logDirs: Seq[File], // 日志目录
   
   /** 创建的时候加锁保证一致性   */
   private val dirLocks = lockLogDirs(liveLogDirs)
-  /** 创建recovery-point0offset-checkpoint文件（用来记录每个主题的每个分区下一次写入磁盘数据的偏移量，即小于该偏移量的数据已写入磁盘） */
+  /** 创建recovery-point-offset-checkpoint文件（用来记录每个主题的每个分区下一次写入磁盘数据的偏移量，即小于该偏移量的数据已写入磁盘） */
   @volatile private var recoveryPointCheckpoints = liveLogDirs.map(dir =>
     (dir, new OffsetCheckpointFile(new File(dir, RecoveryPointCheckpointFile), logDirFailureChannel))).toMap
   @volatile private var logStartOffsetCheckpoints = liveLogDirs.map(dir =>

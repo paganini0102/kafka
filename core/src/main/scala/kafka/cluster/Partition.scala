@@ -499,18 +499,23 @@ class Partition(val topic: String, // 分区所属的主题
   def maybeShrinkIsr(replicaMaxLagTimeMs: Long) {
     val leaderHWIncremented = inWriteLock(leaderIsrUpdateLock) {
       leaderReplicaIfLocal match {
+        // 查找是否有过期副本
         case Some(leaderReplica) =>
           val outOfSyncReplicas = getOutOfSyncReplicas(leaderReplica, replicaMaxLagTimeMs)
+          // 存在过期副本
           if(outOfSyncReplicas.nonEmpty) {
+            // 从该分区当前同步的ISR集合中移除过期的副本作为新的ISR集合
             val newInSyncReplicas = inSyncReplicas -- outOfSyncReplicas
             assert(newInSyncReplicas.nonEmpty)
             info("Shrinking ISR from %s to %s".format(inSyncReplicas.map(_.brokerId).mkString(","),
               newInSyncReplicas.map(_.brokerId).mkString(",")))
             // update ISR in zk and in cache
+             // 由于ISR发送了变化，因此请求更新该分区在ZooKeeper中记录的ISR信息 
             updateIsr(newInSyncReplicas)
             // we may need to increment high watermark since ISR could be down to 1
-
+            // 用于metrics信息收集
             replicaManager.isrShrinkRate.mark()
+            // 由于ISR发生了变化，所以检查Leader的HW是否需要更新，以保证Leader的HW为ISR发生变化后各副本偏移量最小值
             maybeIncrementLeaderHW(leaderReplica)
           } else {
             false
@@ -521,6 +526,7 @@ class Partition(val topic: String, // 分区所属的主题
     }
 
     // some delayed operations may be unblocked after HW changed
+    // 如果更新了分区Leader的HW，尝试运行当前分区被延迟执行的操作
     if (leaderHWIncremented)
       tryCompleteDelayedRequests()
   }
