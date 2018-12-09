@@ -44,8 +44,8 @@ import scala.collection.Map
 /**
  * Data structure that represents a topic partition. The leader maintains the AR, ISR, CUR, RAR
  */
-class Partition(val topic: String,
-                val partitionId: Int,
+class Partition(val topic: String, // 分区所属的主题
+                val partitionId: Int, // 分区编号
                 time: Time,
                 replicaManager: ReplicaManager,
                 val isOffline: Boolean = false) extends Logging with KafkaMetricsGroup {
@@ -57,13 +57,13 @@ class Partition(val topic: String,
   private val logManager = if (!isOffline) replicaManager.logManager else null
   private val zkClient = if (!isOffline) replicaManager.zkClient else null
   // allReplicasMap includes both assigned replicas and the future replica if there is ongoing replica movement
-  private val allReplicasMap = new Pool[Int, Replica]
+  private val allReplicasMap = new Pool[Int, Replica] // 分配给这个分区的所有副本
   // The read lock is only required when multiple reads are executed and needs to be in a consistent manner
   private val leaderIsrUpdateLock = new ReentrantReadWriteLock
   private var zkVersion: Int = LeaderAndIsr.initialZKVersion
   @volatile private var leaderEpoch: Int = LeaderAndIsr.initialLeaderEpoch - 1
   @volatile var leaderReplicaIdOpt: Option[Int] = None
-  @volatile var inSyncReplicas: Set[Replica] = Set.empty[Replica]
+  @volatile var inSyncReplicas: Set[Replica] = Set.empty[Replica] // 正在同步的副本集
 
   /* Epoch of the controller that last changed the leader. This needs to be initialized correctly upon broker startup.
    * One way of doing that is through the controller's start replica state change command. When a new broker starts up
