@@ -225,6 +225,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     info("Deleting isr change notifications")
     zkClient.deleteIsrChangeNotifications()
     info("Initializing controller context")
+    // 初始化Controller的Context，该Context保存了每个topic信息，和所有分区的leader信息
     initializeControllerContext()
     info("Fetching topic deletions in progress")
     val (topicsToBeDeleted, topicsIneligibleForDeletion) = fetchTopicDeletionsInProgress()
@@ -238,7 +239,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     info("Sending update metadata request")
     sendUpdateMetadataRequest(controllerContext.liveOrShuttingDownBrokerIds.toSeq)
 
+    // 开启副本状态机 
     replicaStateMachine.startup()
+    // 开启分区状态机
     partitionStateMachine.startup()
 
     info(s"Ready to serve as the new controller with epoch $epoch")
