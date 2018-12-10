@@ -322,7 +322,7 @@ class PartitionStateMachine(config: KafkaConfig,
         leaderForOffline(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
       case ReassignPartitionLeaderElectionStrategy =>
         leaderForReassign(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
-      case PreferredReplicaPartitionLeaderElectionStrategy =>
+      case PreferredReplicaPartitionLeaderElectionStrategy => 
         leaderForPreferredReplica(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
       case ControlledShutdownPartitionLeaderElectionStrategy =>
         leaderForControlledShutdown(validPartitionsForElection, shuttingDownBrokers).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
@@ -469,7 +469,7 @@ case object OfflinePartitionLeaderElectionStrategy extends PartitionLeaderElecti
 case object ReassignPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
 /** 如果从assignedReplicas取出的第一个副本就是分区leader的话，则抛出异常，否则将第一个副本设置为分区leader。 */
 case object PreferredReplicaPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
-/** 将ISR中处于关闭状态的副本从集合中去除掉，返回一个新新的ISR集合，然后选取第一个副本作为leader，然后令当前AR作为接收LeaderAndIsr请求的副本。 */
+/** 将ISR中处于关闭状态的副本从集合中去除掉，返回一个新的ISR集合，然后选取第一个副本作为leader，然后令当前AR作为接收LeaderAndIsr请求的副本。 */
 case object ControlledShutdownPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
 
 sealed trait PartitionState {
