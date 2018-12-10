@@ -431,7 +431,7 @@ case object ReplicaDeletionStarted extends ReplicaState {
 }
 
 /**
- * Replica删除后，其状态转变为ReplicaDeletionSuccessful。
+ * Replica删除成功后，其状态转变为ReplicaDeletionSuccessful。
  */
 case object ReplicaDeletionSuccessful extends ReplicaState {
   val state: Byte = 5
@@ -439,7 +439,7 @@ case object ReplicaDeletionSuccessful extends ReplicaState {
 }
 
 /**
- * Replica失败后，其状态转变为ReplicaDeletionIneligible。
+ * Replica删除失败后，其状态转变为ReplicaDeletionIneligible。
  */
 case object ReplicaDeletionIneligible extends ReplicaState {
   val state: Byte = 6
