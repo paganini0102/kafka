@@ -74,6 +74,7 @@ class PartitionStateMachine(config: KafkaConfig,
   /**
    * Invoked on startup of the partition's state machine to set the initial state for all existing partitions in
    * zookeeper
+   * 初始化已经存在的Partition的状态
    */
   private def initializePartitionState() {
     for (topicPartition <- controllerContext.partitionReplicaAssignment.keys) {
@@ -95,6 +96,8 @@ class PartitionStateMachine(config: KafkaConfig,
   /**
    * This API invokes the OnlinePartition state change on all partitions in either the NewPartition or OfflinePartition
    * state. This is called on a successful controller election and on broker changes
+   * 更新当前所有parititon的状态，其中包括parititon选主，ISR的分配等操作
+   * 将LeaderAndIsrRequest，UpdateMetadataRequest通过ControllerBrokerRequestBatch发送到各个broker节点
    */
   def triggerOnlinePartitionStateChange() {
     // try to move all partitions in NewPartition or OfflinePartition state to OnlinePartition state except partitions
