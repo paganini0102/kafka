@@ -199,6 +199,7 @@ class PartitionStateMachine(config: KafkaConfig,
    * Initialize leader and isr partition state in zookeeper.
    * @param partitions The partitions  that we're trying to initialize.
    * @return The partitions that have been successfully initialized.
+   * 初次分配leader
    */
   private def initializeLeaderAndIsrForPartitions(partitions: Seq[TopicPartition]): Seq[TopicPartition] = {
     val successfulInitializations = mutable.Buffer.empty[TopicPartition]
