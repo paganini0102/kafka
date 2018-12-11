@@ -74,6 +74,7 @@ class PartitionStateMachine(config: KafkaConfig,
   /**
    * Invoked on startup of the partition's state machine to set the initial state for all existing partitions in
    * zookeeper
+   * 初始化已经存在的Partition的状态
    */
   private def initializePartitionState() {
     for (topicPartition <- controllerContext.partitionReplicaAssignment.keys) {
@@ -95,6 +96,8 @@ class PartitionStateMachine(config: KafkaConfig,
   /**
    * This API invokes the OnlinePartition state change on all partitions in either the NewPartition or OfflinePartition
    * state. This is called on a successful controller election and on broker changes
+   * 更新当前所有parititon的状态，其中包括parititon选主，ISR的分配等操作
+   * 将LeaderAndIsrRequest，UpdateMetadataRequest通过ControllerBrokerRequestBatch发送到各个broker节点
    */
   def triggerOnlinePartitionStateChange() {
     // try to move all partitions in NewPartition or OfflinePartition state to OnlinePartition state except partitions
@@ -196,6 +199,7 @@ class PartitionStateMachine(config: KafkaConfig,
    * Initialize leader and isr partition state in zookeeper.
    * @param partitions The partitions  that we're trying to initialize.
    * @return The partitions that have been successfully initialized.
+   * 初次分配leader
    */
   private def initializeLeaderAndIsrForPartitions(partitions: Seq[TopicPartition]): Seq[TopicPartition] = {
     val successfulInitializations = mutable.Buffer.empty[TopicPartition]
@@ -318,7 +322,7 @@ class PartitionStateMachine(config: KafkaConfig,
         leaderForOffline(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
       case ReassignPartitionLeaderElectionStrategy =>
         leaderForReassign(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
-      case PreferredReplicaPartitionLeaderElectionStrategy =>
+      case PreferredReplicaPartitionLeaderElectionStrategy => 
         leaderForPreferredReplica(validPartitionsForElection).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
       case ControlledShutdownPartitionLeaderElectionStrategy =>
         leaderForControlledShutdown(validPartitionsForElection, shuttingDownBrokers).partition { case (_, newLeaderAndIsrOpt, _) => newLeaderAndIsrOpt.isEmpty }
@@ -465,7 +469,7 @@ case object OfflinePartitionLeaderElectionStrategy extends PartitionLeaderElecti
 case object ReassignPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
 /** 如果从assignedReplicas取出的第一个副本就是分区leader的话，则抛出异常，否则将第一个副本设置为分区leader。 */
 case object PreferredReplicaPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
-/** 将ISR中处于关闭状态的副本从集合中去除掉，返回一个新新的ISR集合，然后选取第一个副本作为leader，然后令当前AR作为接收LeaderAndIsr请求的副本。 */
+/** 将ISR中处于关闭状态的副本从集合中去除掉，返回一个新的ISR集合，然后选取第一个副本作为leader，然后令当前AR作为接收LeaderAndIsr请求的副本。 */
 case object ControlledShutdownPartitionLeaderElectionStrategy extends PartitionLeaderElectionStrategy
 
 sealed trait PartitionState {

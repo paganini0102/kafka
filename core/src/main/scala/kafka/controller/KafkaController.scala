@@ -207,8 +207,10 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
    */
   private def onControllerFailover() {
     info("Reading controller epoch from ZooKeeper")
+    // 注册Controller选举变化的监听器 
     readControllerEpochFromZooKeeper()
     info("Incrementing controller epoch in ZooKeeper")
+    // 增加Controller的选举轮次
     incrementControllerEpoch()
     info("Registering handlers")
 
@@ -224,6 +226,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     info("Deleting isr change notifications")
     zkClient.deleteIsrChangeNotifications()
     info("Initializing controller context")
+    // 初始化Controller的Context，该Context保存了每个topic信息，和所有分区的leader信息
     initializeControllerContext()
     info("Fetching topic deletions in progress")
     val (topicsToBeDeleted, topicsIneligibleForDeletion) = fetchTopicDeletionsInProgress()
@@ -237,7 +240,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     info("Sending update metadata request")
     sendUpdateMetadataRequest(controllerContext.liveOrShuttingDownBrokerIds.toSeq)
 
+    // 开启副本状态机 
     replicaStateMachine.startup()
+    // 开启分区状态机
     partitionStateMachine.startup()
 
     info(s"Ready to serve as the new controller with epoch $epoch")
@@ -1084,6 +1089,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     }
   }
 
+  /**
+   * 在Controller模块启动时，该事件就被放入到事件队列中，所以，最开始处理该事件
+   */
   case object Startup extends ControllerEvent {
 
     def state = ControllerState.ControllerChange
@@ -1146,14 +1154,17 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
      * it's possible that the controller has already been elected when we get here. This check will prevent the following
      * createEphemeralPath method from getting into an infinite loop if this broker is already the controller.
      */
+    // 判断Controller是否已经被选举出来了，若选举出来了，就不用继续选举了
     if (activeControllerId != -1) {
       debug(s"Broker $activeControllerId has been elected as the controller, so stopping the election process.")
       return
     }
 
+    // 若Controller还未被选举出来，则进行选举
     try {
       zkClient.checkedEphemeralCreate(ControllerZNode.path, ControllerZNode.encode(config.brokerId, timestamp))
       info(s"${config.brokerId} successfully elected as the controller")
+      // 自己被选举成Controller，进入onControllerFailover函数
       activeControllerId = config.brokerId
       onControllerFailover()
     } catch {
