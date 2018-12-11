@@ -78,8 +78,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
 
   private val controllerChangeHandler = new ControllerChangeHandler(this, eventManager)
   private val brokerChangeHandler = new BrokerChangeHandler(this, eventManager)
+  /** 主题变化的处理器 */
   private val topicChangeHandler = new TopicChangeHandler(this, eventManager)
-  /** 删除主题的管理器 */
+  /** 主题删除的处理器 */
   private val topicDeletionHandler = new TopicDeletionHandler(this, eventManager)
   private val partitionModificationsHandlers: mutable.Map[String, PartitionModificationsHandler] = mutable.Map.empty
   private val partitionReassignmentHandler = new PartitionReassignmentHandler(this, eventManager)
