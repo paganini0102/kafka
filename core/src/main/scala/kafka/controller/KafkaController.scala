@@ -75,8 +75,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   val replicaStateMachine = new ReplicaStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
   /** 分区状态机 */
   val partitionStateMachine = new PartitionStateMachine(config, stateChangeLogger, controllerContext, topicDeletionManager, zkClient, mutable.Map.empty, new ControllerBrokerRequestBatch(this, stateChangeLogger))
-
+  /** 控制器变化处理器 */
   private val controllerChangeHandler = new ControllerChangeHandler(this, eventManager)
+  /** 代理节点变化处理器 */
   private val brokerChangeHandler = new BrokerChangeHandler(this, eventManager)
   /** 主题变化的处理器 */
   private val topicChangeHandler = new TopicChangeHandler(this, eventManager)
@@ -1203,9 +1204,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
 
       newBrokers.foreach(controllerContext.controllerChannelManager.addBroker)
       deadBrokerIds.foreach(controllerContext.controllerChannelManager.removeBroker)
-      if (newBrokerIds.nonEmpty)
+      if (newBrokerIds.nonEmpty) // 代理上线
         onBrokerStartup(newBrokerIdsSorted)
-      if (deadBrokerIds.nonEmpty)
+      if (deadBrokerIds.nonEmpty) // 代理下线
         onBrokerFailure(deadBrokerIdsSorted)
     }
   }
