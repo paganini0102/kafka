@@ -93,14 +93,14 @@ object TopicCommand extends Logging {
   }
 
   def createTopic(zkClient: KafkaZkClient, opts: TopicCommandOptions) {
-    val topic = opts.options.valueOf(opts.topicOpt)
-    val configs = parseTopicConfigsToBeAdded(opts)
-    val ifNotExists = opts.options.has(opts.ifNotExistsOpt)
+    val topic = opts.options.valueOf(opts.topicOpt) // 获取topic参数所对应的值，也就是topic名称
+    val configs = parseTopicConfigsToBeAdded(opts) // 将参数解析成Properties参数，config所指定的参数集
+    val ifNotExists = opts.options.has(opts.ifNotExistsOpt) // 对应if-not-exists
     if (Topic.hasCollisionChars(topic))
       println("WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.")
     val adminZkClient = new AdminZkClient(zkClient)
     try {
-      if (opts.options.has(opts.replicaAssignmentOpt)) {
+      if (opts.options.has(opts.replicaAssignmentOpt)) { // 检测是否有replica-assignment参数
         val assignment = parseReplicaAssignment(opts.options.valueOf(opts.replicaAssignmentOpt))
         adminZkClient.createOrUpdateTopicPartitionAssignmentPathInZK(topic, assignment, configs, update = false)
       } else {
