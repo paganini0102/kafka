@@ -459,12 +459,12 @@ class ReplicaManager(val config: KafkaConfig,
    * the callback function will be triggered either when timeout or the required acks are satisfied;
    * if the callback function itself is already synchronized on some object then pass this object to avoid deadlock.
    */
-  def appendRecords(timeout: Long,
-                    requiredAcks: Short,
-                    internalTopicsAllowed: Boolean,
+  def appendRecords(timeout: Long, // DelayedProduce延迟时长
+                    requiredAcks: Short, // ack方式
+                    internalTopicsAllowed: Boolean, // 是否允许写入内部主题标识
                     isFromClient: Boolean,
-                    entriesPerPartition: Map[TopicPartition, MemoryRecords],
-                    responseCallback: Map[TopicPartition, PartitionResponse] => Unit,
+                    entriesPerPartition: Map[TopicPartition, MemoryRecords], // 待写入的消息与分区映射关系
+                    responseCallback: Map[TopicPartition, PartitionResponse] => Unit, // 写操作结果响应回调函数
                     delayedProduceLock: Option[Lock] = None,
                     processingStatsCallback: Map[TopicPartition, RecordsProcessingStats] => Unit = _ => ()) {
     if (isValidRequiredAcks(requiredAcks)) {
