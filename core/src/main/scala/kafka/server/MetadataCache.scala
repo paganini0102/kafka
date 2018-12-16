@@ -110,6 +110,7 @@ class MetadataCache(brokerId: Int) extends Logging {
     }
 
   // errorUnavailableEndpoints exists to support v0 MetadataResponses
+  // 获取指定主题的元数据
   def getTopicMetadata(topics: Set[String], listenerName: ListenerName, errorUnavailableEndpoints: Boolean = false): Seq[MetadataResponse.TopicMetadata] = {
     inReadLock(partitionMetadataLock) {
       topics.toSeq.flatMap { topic =>
@@ -180,6 +181,7 @@ class MetadataCache(brokerId: Int) extends Logging {
   def getControllerId: Option[Int] = controllerId
 
   // This method returns the deleted TopicPartitions received from UpdateMetadataRequest
+  // 更新元数据
   def updateCache(correlationId: Int, updateMetadataRequest: UpdateMetadataRequest): Seq[TopicPartition] = {
     inWriteLock(partitionMetadataLock) {
       controllerId = updateMetadataRequest.controllerId match {

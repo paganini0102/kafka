@@ -314,6 +314,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   }
 
   /**
+   * 控制器处理代理节点上线的事件
    * This callback is invoked by the replica state machine's broker change listener, with the list of newly started
    * brokers as input. It does the following -
    * 1. Sends update metadata request to all live and shutting down brokers
@@ -335,15 +336,19 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
     // broker via this update.
     // In cases of controlled shutdown leaders will not be elected when a new broker comes up. So at least in the
     // common controlled shutdown case, the metadata will reach the new brokers faster
+    // 发送“更新元数据”请求给所有代理节点，旧节点在这次更新时知道有新节点加入
     sendUpdateMetadataRequest(controllerContext.liveOrShuttingDownBrokerIds.toSeq)
     // the very first thing to do when a new broker comes up is send it the entire list of partitions that it is
     // supposed to host. Based on that the broker starts the high watermark threads for the input list of partitions
     val allReplicasOnNewBrokers = controllerContext.replicasOnBrokers(newBrokersSet)
+    // 上线节点上的所有副本状态转换为“上线”
     replicaStateMachine.handleStateChanges(allReplicasOnNewBrokers.toSeq, OnlineReplica)
     // when a new broker comes up, the controller needs to trigger leader election for all new and offline partitions
     // to see if these brokers can become leaders for some/all of those
+    // 如果分区状态为“新建”或“下线”，则重新选举主副本，并转为“上线”状态
     partitionStateMachine.triggerOnlinePartitionStateChange()
     // check if reassignment of some partitions need to be restarted
+    // 如果重新分配分区的新副本在上线节点中，则重新分配分区
     val partitionsWithReplicasOnNewBrokers = controllerContext.partitionsBeingReassigned.filter {
       case (_, reassignmentContext) => reassignmentContext.newReplicas.exists(newBrokersSet.contains)
     }
