@@ -391,6 +391,7 @@ class ReplicaManager(val config: KafkaConfig,
     }
   }
 
+  // 获取或创建分区，如果分区已经存在，直接返回；否则创建一个新分区，并加入分区集合
   def getOrCreatePartition(topicPartition: TopicPartition): Partition =
     allPartitions.getAndMaybePut(topicPartition)
 
@@ -1023,6 +1024,9 @@ class ReplicaManager(val config: KafkaConfig,
     }
   }
 
+  /**
+   * 分区在当前节点上要么称为主副本，要么成为备份副本
+   */
   def becomeLeaderOrFollower(correlationId: Int,
                              leaderAndIsrRequest: LeaderAndIsrRequest,
                              onLeadershipChange: (Iterable[Partition], Iterable[Partition]) => Unit): LeaderAndIsrResponse = {
@@ -1161,6 +1165,7 @@ class ReplicaManager(val config: KafkaConfig,
 
     try {
       // First stop fetchers for all the partitions
+      // 转为主副本时，不再需要拉取数据，将分区从拉取管理器中移除
       replicaFetcherManager.removeFetcherForPartitions(partitionState.keySet.map(_.topicPartition))
       // Update the partition information to be the leader
       partitionState.foreach{ case (partition, partitionStateInfo) =>
