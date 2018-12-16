@@ -83,7 +83,9 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   private val topicChangeHandler = new TopicChangeHandler(this, eventManager)
   /** 主题删除的处理器 */
   private val topicDeletionHandler = new TopicDeletionHandler(this, eventManager)
+  /** 分区改变的处理器 */
   private val partitionModificationsHandlers: mutable.Map[String, PartitionModificationsHandler] = mutable.Map.empty
+  /** 分区再分配的处理器 */
   private val partitionReassignmentHandler = new PartitionReassignmentHandler(this, eventManager)
   /** 选举最优的副本作为分区的主副本 */
   private val preferredReplicaElectionHandler = new PreferredReplicaElectionHandler(this, eventManager)
