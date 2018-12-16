@@ -1036,6 +1036,7 @@ class ReplicaManager(val config: KafkaConfig,
         s"epoch ${leaderAndIsrRequest.controllerEpoch} for partition $topicPartition")
     }
     replicaStateChangeLock synchronized {
+      // 如果leaderAndIsr请求的controllerEpoch值小于初始化的controllerEpoch抛出异常
       if (leaderAndIsrRequest.controllerEpoch < controllerEpoch) {
         stateChangeLogger.warn(s"Ignoring LeaderAndIsr request from controller ${leaderAndIsrRequest.controllerId} with " +
           s"correlation id $correlationId since its controller epoch ${leaderAndIsrRequest.controllerEpoch} is old. " +
@@ -1047,11 +1048,14 @@ class ReplicaManager(val config: KafkaConfig,
         controllerEpoch = leaderAndIsrRequest.controllerEpoch
 
         // First check partition's leader epoch
+        // 首先检查partition的leader的epoch值
         val partitionState = new mutable.HashMap[Partition, LeaderAndIsrRequest.PartitionState]()
         val newPartitions = leaderAndIsrRequest.partitionStates.asScala.keys.filter(topicPartition => getPartition(topicPartition).isEmpty)
-
+        // 遍历leaderAndIsr请求的partition的状态
         leaderAndIsrRequest.partitionStates.asScala.foreach { case (topicPartition, stateInfo) =>
+          // 根据topic和partition获取或者创建partition
           val partition = getOrCreatePartition(topicPartition)
+          // 获取该partition的leadaer epoch值
           val partitionLeaderEpoch = partition.getLeaderEpoch
           if (partition eq ReplicaManager.OfflinePartition) {
             stateChangeLogger.warn(s"Ignoring LeaderAndIsr request from " +
@@ -1059,10 +1063,11 @@ class ReplicaManager(val config: KafkaConfig,
               s"epoch $controllerEpoch for partition $topicPartition as the local replica for the " +
               "partition is in an offline log directory")
             responseMap.put(topicPartition, Errors.KAFKA_STORAGE_ERROR)
-          } else if (partitionLeaderEpoch < stateInfo.basePartitionState.leaderEpoch) {
+          } else if (partitionLeaderEpoch < stateInfo.basePartitionState.leaderEpoch) { // 如果partitionLeaderEpoch小于请求中的leaderEpoch，否则就是过时的请求
             // If the leader epoch is valid record the epoch of the controller that made the leadership decision.
             // This is useful while updating the isr to maintain the decision maker controller's epoch in the zookeeper path
-            if(stateInfo.basePartitionState.replicas.contains(localBrokerId))
+            if(stateInfo.basePartitionState.replicas.contains(localBrokerId)) // 判断该partition是否被assigned给当前的broker
+              // 将分配到到当前broker的partition放入partitionState，其中partition是当前的状况，stateInfo是请求中最新情况
               partitionState.put(partition, stateInfo)
             else {
               stateChangeLogger.warn(s"Ignoring LeaderAndIsr request from controller $controllerId with " +
