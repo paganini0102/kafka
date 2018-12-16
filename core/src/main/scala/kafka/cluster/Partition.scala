@@ -544,12 +544,12 @@ class Partition(val topic: String, // 分区所属的主题
      *
      **/
     val candidateReplicas = inSyncReplicas - leaderReplica
-
+    // 查找Follower副本上次追上Leader的LEO的时间与当前之差大于Follower副本落后Leader副本最大时间的阈值的副本
     val laggingReplicas = candidateReplicas.filter(r => (time.milliseconds - r.lastCaughtUpTimeMs) > maxLagMs)
     if (laggingReplicas.nonEmpty)
       debug("Lagging replicas are %s".format(laggingReplicas.map(_.brokerId).mkString(",")))
 
-    laggingReplicas
+    laggingReplicas // 返回查找的落后Leader的Follower副本
   }
 
   def appendRecordsToFutureReplica(records: MemoryRecords) {
