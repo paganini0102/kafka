@@ -1080,7 +1080,7 @@ class ReplicaManager(val config: KafkaConfig,
             responseMap.put(topicPartition, Errors.STALE_CONTROLLER_EPOCH)
           }
         }
-
+        // 对成为主副本的分区调用makeLeaders，对成为备份副本的分区调用makeFollowers
         val partitionsTobeLeader = partitionState.filter { case (_, stateInfo) =>
           stateInfo.basePartitionState.leader == localBrokerId
         }
@@ -1109,7 +1109,7 @@ class ReplicaManager(val config: KafkaConfig,
         // we initialize highwatermark thread after the first leaderisrrequest. This ensures that all the partitions
         // have been completely populated before starting the checkpointing there by avoiding weird race conditions
         if (!hwThreadInitialized) {
-          startHighWaterMarksCheckPointThread()
+          startHighWaterMarksCheckPointThread() // 启动检查点线程
           hwThreadInitialized = true
         }
 
@@ -1126,7 +1126,7 @@ class ReplicaManager(val config: KafkaConfig,
         futureReplicasAndInitialOffset.keys.foreach(logManager.abortAndPauseCleaning)
         replicaAlterLogDirsManager.addFetcherForPartitions(futureReplicasAndInitialOffset)
 
-        replicaFetcherManager.shutdownIdleFetcherThreads()
+        replicaFetcherManager.shutdownIdleFetcherThreads() // 关闭空闲的拉取线程
         replicaAlterLogDirsManager.shutdownIdleFetcherThreads()
         onLeadershipChange(partitionsBecomeLeader, partitionsBecomeFollower)
         new LeaderAndIsrResponse(Errors.NONE, responseMap.asJava)
