@@ -262,6 +262,8 @@ class TopicDeletionManager(controller: KafkaController,
   }
 
   /**
+   * 不是直接删除作为方法参数的所有副本（replicasToBeDeleted）
+   * 而是选择状态不是“删除成功”的存活副本（replicasForDeletion）
    * Invoked by onPartitionDeletion. It is the 2nd step of topic deletion, the first being sending
    * UpdateMetadata requests to all brokers to start rejecting requests for deleted topics. As part of starting deletion,
    * the topics are added to the in progress list. As long as a topic is in the in progress list, deletion for that topic
@@ -284,8 +286,10 @@ class TopicDeletionManager(controller: KafkaController,
       val successfullyDeletedReplicas = controller.replicaStateMachine.replicasInState(topic, ReplicaDeletionSuccessful)
       val replicasForDeletionRetry = aliveReplicasForTopic -- successfullyDeletedReplicas
       // move dead replicas directly to failed state
+      // 挂掉的副本（副本所在的代理节点挂掉了）状态转为“删除失败”
       controller.replicaStateMachine.handleStateChanges(deadReplicasForTopic.toSeq, ReplicaDeletionIneligible)
       // send stop replica to all followers that are not in the OfflineReplica state so they stop sending fetch requests to the leader
+      // 待删除的副本状态先转为“下线”，再转为“开始删除”
       controller.replicaStateMachine.handleStateChanges(replicasForDeletionRetry.toSeq, OfflineReplica)
       debug(s"Deletion started for replicas ${replicasForDeletionRetry.mkString(",")}")
       controller.replicaStateMachine.handleStateChanges(replicasForDeletionRetry.toSeq, ReplicaDeletionStarted,

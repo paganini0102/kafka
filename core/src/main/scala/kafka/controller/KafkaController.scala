@@ -365,6 +365,7 @@ class KafkaController(val config: KafkaConfig, zkClient: KafkaZkClient, time: Ti
   }
 
   /*
+   * 控制器处理代理节点下线的事件
    * This callback is invoked by the replica state machine's broker change listener with the list of failed brokers
    * as input. It will call onReplicaBecomeOffline(...) with the list of replicas on those failed brokers as input.
    */
