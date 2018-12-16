@@ -496,6 +496,9 @@ class Partition(val topic: String, // 分区所属的主题
     replicaManager.tryCompleteDelayedDeleteRecords(requestKey)
   }
 
+  /**
+   * 执行过期副本的检查
+   */
   def maybeShrinkIsr(replicaMaxLagTimeMs: Long) {
     val leaderHWIncremented = inWriteLock(leaderIsrUpdateLock) {
       leaderReplicaIfLocal match {
